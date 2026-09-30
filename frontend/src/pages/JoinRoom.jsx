@@ -25,7 +25,7 @@ const DEMO_ROOMS = [
 ];
 
 export const JoinRoom = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [roomCode, setRoomCode] = useState('');
@@ -33,11 +33,27 @@ export const JoinRoom = () => {
     return (
       user?.user_metadata?.user_name ||
       user?.user_metadata?.name ||
+      user?.name ||
       user?.email?.split('@')[0] ||
       localStorage.getItem('codeo_guest_name') ||
       ''
     );
   });
+
+  // Keep name synced when auth resolves
+  React.useEffect(() => {
+    if (user) {
+      const userDisplay =
+        user?.user_metadata?.user_name ||
+        user?.user_metadata?.name ||
+        user?.name ||
+        user?.email?.split('@')[0] ||
+        '';
+      if (userDisplay) {
+        setName(userDisplay);
+      }
+    }
+  }, [user]);
 
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -56,13 +72,13 @@ export const JoinRoom = () => {
       return;
     }
 
-    const cleanName = name.trim();
+    const cleanName = (user ? (user?.user_metadata?.user_name || user?.name || user?.email?.split('@')[0] || name) : name).trim();
     if (!cleanName && !isAuthenticated) {
       setErrorMsg('Please enter your display name to join.');
       return;
     }
 
-    if (cleanName) {
+    if (cleanName && !user) {
       localStorage.setItem('codeo_guest_name', cleanName);
     }
 

@@ -40,22 +40,44 @@ function EditorPageInner() {
   const navigate = useNavigate();
   const roomCode = useMemo(() => (rawCode || '').toUpperCase().trim(), [rawCode]);
 
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
 
   // Guest modal state for unauthenticated collaborators
   const [guestName, setGuestName] = useState(() => localStorage.getItem('codeo_guest_name') || '');
-  const [showGuestModal, setShowGuestModal] = useState(!user && !localStorage.getItem('codeo_guest_name'));
+  const [showGuestModal, setShowGuestModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
 
+  // Automatically dismiss or show guest modal only after authentication state is fully resolved
+  useEffect(() => {
+    if (!authLoading) {
+      if (user || isAuthenticated) {
+        setShowGuestModal(false);
+      } else {
+        const storedGuestName = localStorage.getItem('codeo_guest_name');
+        if (!storedGuestName) {
+          setShowGuestModal(true);
+        }
+      }
+    }
+  }, [authLoading, user, isAuthenticated]);
+
   // Collaborator identification
-  const userName = user?.user_metadata?.user_name ||
-                   user?.user_metadata?.name ||
-                   user?.email?.split('@')[0] ||
-                   guestName ||
-                   'Collaborator';
+  const userName =
+    user?.user_metadata?.user_name ||
+    user?.user_metadata?.name ||
+    user?.name ||
+    user?.email?.split('@')[0] ||
+    guestName ||
+    'Collaborator';
 
   const effectiveUser = useMemo(() => {
-    return user || {
+    if (user) {
+      return {
+        ...user,
+        name: user.name || user.user_metadata?.user_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+      };
+    }
+    return {
       id: 'guest-' + (guestName ? guestName.toLowerCase().replace(/[^a-z0-9]/g, '') : 'anon'),
       name: userName,
       user_metadata: { user_name: userName },
@@ -757,6 +779,16 @@ function EditorPageInner() {
     window.addEventListener('mouseup', onMouseUp);
   };
 
+  // Loading screen while initial session or room metadata is resolving
+  if (authLoading || (roomLoading && !roomInfo && !roomError)) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#070a10] text-white p-4 select-none">
+        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="font-serif italic text-sm text-neutral-400">Loading your workspace...</p>
+      </div>
+    );
+  }
+
   // Room not found or error state
   if (roomError && !roomLoading) {
     return (
@@ -1165,8 +1197,8 @@ function EditorPageInner() {
         <div className="fixed inset-0 z-50 select-none cursor-col-resize" />
       )}
 
-      {/* Guest Name Modal with Room Preview */}
-      {showGuestModal && (
+      {/* Guest Name Modal with Room Preview (Only for truly unauthenticated guest visitors) */}
+      {showGuestModal && !authLoading && !user && !isAuthenticated && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 select-none">
           <div className="bg-[#080c14] border border-white/20 rounded-2xl p-6 sm:p-7 max-w-md w-full text-center shadow-2xl">
             <h3 className="font-serif italic text-2xl sm:text-3xl text-white mb-1.5">Join as Guest</h3>
