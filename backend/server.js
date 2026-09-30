@@ -108,19 +108,23 @@ const frontendDist = path.join(__dirname, '../frontend/dist');
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
 
-  // SPA fallback for frontend client-side routes (e.g. /room/:code, /login)
-  app.get('*', (req, res, next) => {
+  // SPA fallback for frontend client-side routes (Express 5 compatible)
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') {
+      return next();
+    }
+    const url = req.originalUrl || req.url || '';
     if (
-      req.originalUrl.startsWith('/api') ||
-      req.originalUrl.startsWith('/health') ||
-      req.originalUrl.startsWith('/socket.io') ||
-      req.originalUrl.startsWith('/yjs') ||
-      req.originalUrl.startsWith('/auth') ||
-      req.originalUrl.startsWith('/rooms') ||
-      req.originalUrl.startsWith('/execute') ||
-      req.originalUrl.startsWith('/explain') ||
-      req.originalUrl.startsWith('/ai') ||
-      req.originalUrl.startsWith('/agora')
+      url.startsWith('/api') ||
+      url.startsWith('/health') ||
+      url.startsWith('/socket.io') ||
+      url.startsWith('/yjs') ||
+      url.startsWith('/auth') ||
+      url.startsWith('/rooms') ||
+      url.startsWith('/execute') ||
+      url.startsWith('/explain') ||
+      url.startsWith('/ai') ||
+      url.startsWith('/agora')
     ) {
       return next();
     }

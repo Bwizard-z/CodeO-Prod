@@ -26,8 +26,8 @@ function createRateLimiter({
       error: msgText,
       code: 'RATE_LIMIT_EXCEEDED',
     },
-    keyGenerator: keyGenerator || ((req) => req.user?.id || req.ip),
-    validate: { xForwardedForHeader: false },
+    validate: false,
+    ...(keyGenerator ? { keyGenerator } : {}),
   });
 }
 
