@@ -118,17 +118,18 @@ if (fs.existsSync(frontendDist)) {
       return next();
     }
     const url = req.originalUrl || req.url || '';
+
+    // Always serve frontend SPA for the OAuth callback page
+    if (url.startsWith('/auth/callback')) {
+      return res.sendFile(path.join(frontendDist, 'index.html'));
+    }
+
+    // Let API, health checks, and WebSocket upgrade paths fall through
     if (
       url.startsWith('/api') ||
       url.startsWith('/health') ||
       url.startsWith('/socket.io') ||
-      url.startsWith('/yjs') ||
-      url.startsWith('/auth') ||
-      url.startsWith('/rooms') ||
-      url.startsWith('/execute') ||
-      url.startsWith('/explain') ||
-      url.startsWith('/ai') ||
-      url.startsWith('/agora')
+      url.startsWith('/yjs')
     ) {
       return next();
     }
