@@ -9,12 +9,11 @@ const { supabaseAdmin } = require('../services/supabase');
 // In-memory fallback history if database table is initializing or offline
 const inMemoryHistory = new Map();
 
-// Rate limiter: 20 AI chat requests per minute per user/IP
+// Rate limiter: 20 AI chat requests per minute
 const aiChatLimiter = createRateLimiter({
   windowMs: 60 * 1000,
   maxRequests: 20,
   message: 'Too many AI assistant requests. Please wait a minute and try again.',
-  keyGenerator: (req) => req.user?.id || req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
 });
 
 /**

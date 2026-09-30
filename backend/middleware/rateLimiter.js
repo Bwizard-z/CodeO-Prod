@@ -41,17 +41,15 @@ const authLimiter = createRateLimiter({
 // 2. Gemini Code Explanation Limiter (protects AI token quotas)
 const explainLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 10,     // 10 explanation requests per minute per user/IP
+  maxRequests: 10,     // 10 explanation requests per minute
   message: 'Too many explanation requests. Please wait a minute and try again.',
-  keyGenerator: (req) => req.user?.id || req.ip,
 });
 
 // 3. Judge0 Code Execution Limiter (protects server CPU, containers & compiler resources)
 const executeLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 20,     // 20 code executions per minute per user/IP
+  maxRequests: 20,     // 20 code executions per minute
   message: 'Too many code execution attempts. Please wait a minute before executing code again.',
-  keyGenerator: (req) => req.user?.id || req.ip,
 });
 
 // 4. Baseline Global API Limiter (broad Layer 7 anti-scraping & flood protection)
