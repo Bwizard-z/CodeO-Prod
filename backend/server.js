@@ -104,7 +104,6 @@ app.use(['/api/explain', '/explain'], explainRoutes);
 app.use(['/api/ai', '/ai'], aiRoutes);
 app.use(['/api/agora', '/agora'], agoraRoutes);
 
-const path = require('path');
 const fs = require('fs');
 
 const frontendDist = path.join(__dirname, '../frontend/dist');
