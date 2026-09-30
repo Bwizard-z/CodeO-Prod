@@ -8,7 +8,13 @@ export const authService = {
     return await supabase.auth.signInWithPassword({ email, password });
   },
   async signInWithOAuth(provider = 'google') {
-    return await supabase.auth.signInWithOAuth({ provider });
+    const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined;
+    return await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: redirectUrl,
+      },
+    });
   },
   async signOut() {
     return await supabase.auth.signOut();

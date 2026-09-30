@@ -95,7 +95,7 @@ export function AuthProvider({ children }) {
   const signUp = async (email, password, name = '') => {
     setError(null);
     try {
-      const redirectUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}/verify-email`;
+      const redirectUrl = `${window.location.origin}/verify-email`;
       const { data, error: signErr } = await supabase.auth.signUp({
         email,
         password,
@@ -137,7 +137,7 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = async () => {
     setError(null);
     try {
-      const redirectUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}/auth/callback`;
+      const redirectUrl = `${window.location.origin}/auth/callback`;
       const { data, error: oAuthErr } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -177,7 +177,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const redirectUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}/verify-email`;
+      const redirectUrl = `${window.location.origin}/verify-email`;
       // Supabase v2 resend verification method
       const { data, error: resendErr } = await supabase.auth.resend({
         type: 'signup',
@@ -199,7 +199,7 @@ export function AuthProvider({ children }) {
   const resetPassword = async (email) => {
     setError(null);
     try {
-      const redirectUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}/reset-password`;
+      const redirectUrl = `${window.location.origin}/reset-password`;
       const { data, error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
       });
