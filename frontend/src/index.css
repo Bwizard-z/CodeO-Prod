@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --color-codeo-bg: #050608;
+  --color-codeo-card: #0e121b;
+  --color-codeo-surface: #121723;
+  --color-codeo-pill: #131b2e;
+  --color-codeo-footer: #0c1220;
+  --color-codeo-yellow: #fbff47;
+  --color-codeo-online: #22c55e;
+  --color-codeo-run: #16a34a;
+  --color-codeo-explain: #0d9488;
+}
+
+/* Responsive root font-size scaling:
+   Tailwind rem units proportionally scale down for 14-inch laptops and dense displays */
+:root {
+  --app-scale: 1;
+  font-size: 15px;
+}
+
+/* 14-inch laptops at 125% scaling (~1536px) or 1440p */
+@media (max-width: 1536px) {
+  :root {
+    font-size: 14.25px;
+  }
+}
+
+/* 14-inch laptops at 150% scaling (~1280px) and standard 1366x768 screens */
+@media (max-width: 1366px) {
+  :root {
+    font-size: 13.5px;
+  }
+}
+
+/* Compact laptop screens or split windows (<= 1100px) */
+@media (max-width: 1100px) {
+  :root {
+    font-size: 13px;
+  }
+}
+
+/* Short height viewports typical of 14-inch laptops with taskbars and browser tabs (<= 780px) */
+@media (max-height: 780px) and (min-width: 1024px) {
+  :root {
+    font-size: 13.25px;
+  }
+}
+
+/* User-adjustable display density modes */
+html[data-ui-scale="compact"] {
+  font-size: 12.5px !important;
+}
+
+html[data-ui-scale="small"] {
+  font-size: 13.5px !important;
+}
+
+html[data-ui-scale="normal"] {
+  font-size: 14.5px !important;
+}
+
+html[data-ui-scale="large"] {
+  font-size: 16px !important;
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  body {
+    background-color: #000000;
+    color: #f5f5f5;
+    min-height: 100vh;
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* Custom aesthetic scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090b10;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #232b3e;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #37435f;
+}
+
+/* Monaco Editor Overlay & Command Palette (Quick Input Widget) Clean Centered Modal */
+.monaco-editor .quick-input-widget {
+  position: fixed !important;
+  top: 56px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin-left: 0 !important;
+  width: min(580px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  background-color: #0c111d !important;
+  z-index: 99999 !important;
+  overflow: hidden !important;
+}
+
+.monaco-editor .quick-input-widget .quick-input-header {
+  padding: 8px !important;
+}
+
+.monaco-editor .quick-input-widget .monaco-inputbox {
+  border-radius: 6px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background-color: #080c14 !important;
+  padding: 4px 8px !important;
+}
+
+.monaco-editor .quick-input-list .monaco-list-row {
+  border-radius: 6px !important;
+  padding: 2px 6px !important;
+}
+
+.monaco-editor .quick-input-list .monaco-list-row.focused {
+  background-color: #1e293b !important;
+  color: #fbff47 !important;
+}
+
+.monaco-editor .monaco-menu .monaco-action-bar.vertical .action-item {
+  border-radius: 6px !important;
+}
+
+/* Real-time Agora RTC Voice Speaking Ring Animation */
+@keyframes speaking-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.75), 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.45), 0 0 0 9px rgba(34, 197, 94, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0), 0 0 0 13px rgba(34, 197, 94, 0);
+  }
+}
+
+.speaking-ring {
+  animation: speaking-pulse 1.3s cubic-bezier(0.25, 0.1, 0.25, 1) infinite !important;
+  border-color: #22c55e !important;
+  transition: all 0.2s ease-in-out;
+}
