@@ -14,7 +14,6 @@
     "@fortawesome/free-solid-svg-icons": "^7.3.1",
     "@fortawesome/react-fontawesome": "^3.5.0",
     "@monaco-editor/react": "^4.7.0",
-    "@rollup/rollup-win32-x64-msvc": "^4.63.5",
     "@supabase/supabase-js": "^2.49.1",
     "@tailwindcss/vite": "^4.0.0",
     "agora-rtc-sdk-ng": "^4.24.8",
