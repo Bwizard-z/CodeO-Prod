@@ -1,4 +1,9 @@
-require('dotenv').config();
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load environment variables from backend/.env or root .env regardless of execution directory
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
