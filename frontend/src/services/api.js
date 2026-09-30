@@ -1,9 +1,26 @@
 import axios from 'axios';
 import { supabase } from '../lib/supabase';
 
-const API_BASE_URL =
-  import.meta.env.VITE_BACKEND_URL ||
-  (import.meta.env.PROD ? '' : 'http://localhost:5000');
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    // In production or when hosted on the same domain (e.g. *.sslip.io behind Nginx),
+    // always use relative URL '' so requests go to the same origin over HTTPS port 443.
+    if (import.meta.env.PROD) {
+      return '';
+    }
+    // If the browser loaded the page over HTTPS, never allow insecure HTTP calls
+    if (window.location.protocol === 'https:') {
+      const envUrl = import.meta.env.VITE_BACKEND_URL;
+      if (envUrl && envUrl.startsWith('http://')) {
+        return envUrl.replace(/^http:\/\//, 'https://');
+      }
+      return envUrl || '';
+    }
+  }
+  return import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+};
+
+const API_BASE_URL = getBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -56,7 +56,6 @@ app.use(
   })
 );
 
-// Core CORS Middleware
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -64,11 +63,22 @@ app.use(
       if (!origin) {
         return callback(null, true);
       }
-      const isAllowed = allowedOrigins.some((allowed) => {
-        if (allowed === origin) return true;
-        if (allowed.startsWith('*.')) return origin.endsWith(allowed.slice(2));
-        return false;
-      });
+      const cleanOrigin = origin.replace(/\/+$/, '');
+      const cleanOriginHost = cleanOrigin.replace(/^https?:\/\//, '');
+
+      const isAllowed =
+        cleanOrigin.endsWith('.sslip.io') ||
+        cleanOrigin.includes('localhost') ||
+        cleanOrigin.includes('127.0.0.1') ||
+        /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?$/.test(cleanOriginHost) ||
+        allowedOrigins.some((allowed) => {
+          if (!allowed) return false;
+          const cleanAllowed = allowed.replace(/\/+$/, '');
+          if (cleanAllowed === cleanOrigin) return true;
+          if (cleanAllowed.replace(/^https?:\/\//, '') === cleanOriginHost) return true;
+          if (cleanAllowed.startsWith('*.')) return cleanOrigin.endsWith(cleanAllowed.slice(2));
+          return false;
+        });
 
       if (isAllowed) {
         return callback(null, true);

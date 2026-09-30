@@ -2,9 +2,24 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ||
-  (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000');
+const getBackendUrl = () => {
+  if (typeof window !== 'undefined') {
+    if (import.meta.env.PROD) {
+      return window.location.origin;
+    }
+    const envUrl = import.meta.env.VITE_BACKEND_URL;
+    if (envUrl) {
+      if (window.location.protocol === 'https:' && envUrl.startsWith('http://')) {
+        return envUrl.replace(/^http:\/\//, 'https://');
+      }
+      return envUrl;
+    }
+    return 'http://localhost:5000';
+  }
+  return '';
+};
+
+const BACKEND_URL = getBackendUrl();
 
 export function useSocket(roomCode, user = null) {
   const [socket, setSocket] = useState(null);

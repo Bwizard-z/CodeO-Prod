@@ -46,26 +46,29 @@ export function useYjs(roomCode, user = null) {
 
   // Determine WebSocket URL
   const wsUrl = useMemo(() => {
-    if (import.meta.env.VITE_WS_URL) {
-      return import.meta.env.VITE_WS_URL;
-    }
-    // If backend URL is provided, derive WebSocket URL directly from it
-    if (import.meta.env.VITE_BACKEND_URL) {
-      try {
-        const parsed = new URL(import.meta.env.VITE_BACKEND_URL);
-        const wsProto = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
-        return `${wsProto}//${parsed.host}/yjs`;
-      } catch (e) {
-        console.warn('Could not derive WS URL from VITE_BACKEND_URL:', e);
+    if (typeof window !== 'undefined') {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      // In production, connect directly to the current host via reverse proxy
+      if (import.meta.env.PROD) {
+        return `${protocol}//${window.location.host}/yjs`;
       }
+      if (import.meta.env.VITE_WS_URL) {
+        return window.location.protocol === 'https:'
+          ? import.meta.env.VITE_WS_URL.replace(/^ws:/, 'wss:')
+          : import.meta.env.VITE_WS_URL;
+      }
+      if (import.meta.env.VITE_BACKEND_URL) {
+        try {
+          const parsed = new URL(import.meta.env.VITE_BACKEND_URL);
+          const wsProto = (window.location.protocol === 'https:' || parsed.protocol === 'https:') ? 'wss:' : 'ws:';
+          return `${wsProto}//${parsed.host}/yjs`;
+        } catch (e) {
+          console.warn('Could not derive WS URL from VITE_BACKEND_URL:', e);
+        }
+      }
+      return `${protocol}//${window.location.hostname}:5000/yjs`;
     }
-    // Fallback: derive from current window location
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname || 'localhost';
-    const port = import.meta.env.PROD
-      ? (window.location.port ? `:${window.location.port}` : '')
-      : ':5000';
-    return `${protocol}//${host}${port}/yjs`;
+    return 'ws://localhost:5000/yjs';
   }, []);
 
   const assignedColor = useMemo(() => {
