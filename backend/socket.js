@@ -167,6 +167,61 @@ function initSocket(server, allowedOrigins = []) {
       socket.to(`room-${cleanCode}`).emit('code-explained', payload);
     });
 
+    // 5b. AI Chat Question Broadcast (real-time peer sync)
+    socket.on('ai-question', (data) => {
+      const roomCode = data?.roomCode || currentRoomCode;
+      if (!roomCode) return;
+      const cleanCode = roomCode.toUpperCase().trim();
+
+      const payload = {
+        message: data.message || data.promptText || '',
+        promptText: data.promptText || data.message || '',
+        userName: data.userName || currentUser?.name || 'Collaborator',
+        userId: data.userId || currentUser?.id,
+        timestamp: data.timestamp || new Date().toISOString(),
+        id: data.id || `aiq-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      };
+
+      // Broadcast to all other peers in the room
+      socket.to(`room-${cleanCode}`).emit('ai-question', payload);
+    });
+
+    // 5c. AI Chat Response Broadcast
+    socket.on('ai-response', (data) => {
+      const roomCode = data?.roomCode || currentRoomCode;
+      if (!roomCode) return;
+      const cleanCode = roomCode.toUpperCase().trim();
+
+      const payload = {
+        message: data.message || data.response || '',
+        response: data.message || data.response || '',
+        promptText: data.promptText || '',
+        userName: data.userName || currentUser?.name || 'Collaborator',
+        userId: data.userId || currentUser?.id,
+        timestamp: data.timestamp || new Date().toISOString(),
+        id: data.id || `air-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      };
+
+      // Broadcast to all other peers in the room
+      socket.to(`room-${cleanCode}`).emit('ai-response', payload);
+    });
+
+    // 5d. AI Chat Error Broadcast
+    socket.on('ai-response-error', (data) => {
+      const roomCode = data?.roomCode || currentRoomCode;
+      if (!roomCode) return;
+      const cleanCode = roomCode.toUpperCase().trim();
+      socket.to(`room-${cleanCode}`).emit('ai-response-error', data);
+    });
+
+    // 5e. AI Chat Clear Broadcast
+    socket.on('ai-chat-clear', (data) => {
+      const roomCode = data?.roomCode || currentRoomCode;
+      if (!roomCode) return;
+      const cleanCode = roomCode.toUpperCase().trim();
+      socket.to(`room-${cleanCode}`).emit('ai-chat-clear', data);
+    });
+
     // 6. User Joined Broadcast (Explicit trigger or audio presence)
     socket.on('user-joined', (data = {}) => {
       const roomCode = data?.roomCode || currentRoomCode;

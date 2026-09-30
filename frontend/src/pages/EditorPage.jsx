@@ -248,7 +248,23 @@ function EditorPageInner() {
       setAiError(null);
 
       // Add user message to history
-      setAiChatHistory((prev) => [...prev, { role: 'user', text: promptText }]);
+      const currentUserName = effectiveUser?.name || userName || 'You';
+      setAiChatHistory((prev) => [
+        ...prev,
+        { role: 'user', text: promptText, userName: currentUserName },
+      ]);
+
+      // Broadcast question to all peers in room so they see it in real-time
+      if (socket && roomCode) {
+        socket.emit('ai-question', {
+          roomCode,
+          message: promptText,
+          promptText,
+          userName: currentUserName,
+          userId: effectiveUser?.id,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       try {
         const res = await api.aiChat({
@@ -259,12 +275,27 @@ function EditorPageInner() {
           chatHistory: aiChatHistory,
           history: aiChatHistory,
           roomId: roomInfo?.id || roomCode,
+          roomCode,
+          userName: currentUserName,
         });
 
         const aiMessage = res?.message || res?.response || res?.explanation;
         if (res && res.success && aiMessage) {
           setAiOutput(aiMessage);
           setAiChatHistory((prev) => [...prev, { role: 'assistant', text: aiMessage }]);
+
+          // Broadcast response to all peers in room
+          if (socket && roomCode) {
+            socket.emit('ai-response', {
+              roomCode,
+              message: aiMessage,
+              response: aiMessage,
+              promptText,
+              userName: currentUserName,
+              userId: effectiveUser?.id,
+              timestamp: new Date().toISOString(),
+            });
+          }
         } else {
           throw new Error(res?.error || 'No response received from Gemini AI');
         }
@@ -280,6 +311,19 @@ function EditorPageInner() {
           if (fallbackRes && fallbackRes.success && fbMessage) {
             setAiOutput(fbMessage);
             setAiChatHistory((prev) => [...prev, { role: 'assistant', text: fbMessage }]);
+
+            // Broadcast response to all peers in room
+            if (socket && roomCode) {
+              socket.emit('ai-response', {
+                roomCode,
+                message: fbMessage,
+                response: fbMessage,
+                promptText,
+                userName: currentUserName,
+                userId: effectiveUser?.id,
+                timestamp: new Date().toISOString(),
+              });
+            }
             return;
           }
         } catch (fbErr) {
@@ -290,11 +334,14 @@ function EditorPageInner() {
           err.message ||
           'AI service temporarily unavailable. Please try again.';
         setAiError(errMsg);
+        if (socket && roomCode) {
+          socket.emit('ai-response-error', { roomCode, error: errMsg });
+        }
       } finally {
         setIsExplaining(false);
       }
     },
-    [isExplaining, aiSelectedCode, editorText, yjs.yText, language, aiChatHistory, roomInfo?.id, roomCode]
+    [isExplaining, aiSelectedCode, editorText, yjs.yText, language, aiChatHistory, roomInfo?.id, roomCode, socket, effectiveUser, userName]
   );
 
   // AI Context Menu & Shortcut Action Handler
@@ -430,6 +477,122 @@ function EditorPageInner() {
       socket.off('language-changed', handleRemoteLanguage);
     };
   }, [socket, setLanguage]);
+
+  // Real-time synchronization of Gemini AI Assistant chat across all room collaborators
+  useEffect(() => {
+    if (!socket) return;
+
+    // 1. Another collaborator asked a question
+    const handleRemoteAiQuestion = (data) => {
+      if (!data) return;
+      const questionText = data.message || data.promptText;
+      if (!questionText) return;
+
+      setIsAiPanelOpen(true);
+      setIsExplaining(true);
+      setAiError(null);
+
+      setAiChatHistory((prev) => {
+        const isDuplicate = prev.some(
+          (m) =>
+            m.role === 'user' &&
+            m.text === questionText &&
+            m.userName === (data.userName || 'Collaborator')
+        );
+        if (isDuplicate) return prev;
+        return [
+          ...prev,
+          {
+            role: 'user',
+            text: questionText,
+            userName: data.userName || 'Collaborator',
+            userId: data.userId,
+            timestamp: data.timestamp || new Date().toISOString(),
+          },
+        ];
+      });
+    };
+
+    // 2. AI response arrived from collaborator's request
+    const handleRemoteAiResponse = (data) => {
+      if (!data) return;
+      const responseText = data.message || data.response;
+      if (!responseText) return;
+
+      setIsExplaining(false);
+      setAiOutput(responseText);
+
+      setAiChatHistory((prev) => {
+        const isDuplicate = prev.some(
+          (m) => m.role === 'assistant' && m.text === responseText
+        );
+        if (isDuplicate) return prev;
+        return [
+          ...prev,
+          {
+            role: 'assistant',
+            text: responseText,
+            timestamp: data.timestamp || new Date().toISOString(),
+          },
+        ];
+      });
+    };
+
+    // 3. Full chat turn broadcast from server
+    const handleRemoteAiChatSync = (data) => {
+      if (!data) return;
+      setIsExplaining(false);
+
+      if (data.assistantMessage?.text) {
+        setAiOutput(data.assistantMessage.text);
+      }
+
+      setAiChatHistory((prev) => {
+        let updated = [...prev];
+        if (data.userMessage?.text) {
+          const userExists = updated.some(
+            (m) => m.role === 'user' && m.text === data.userMessage.text
+          );
+          if (!userExists) {
+            updated.push(data.userMessage);
+          }
+        }
+        if (data.assistantMessage?.text) {
+          const asstExists = updated.some(
+            (m) => m.role === 'assistant' && m.text === data.assistantMessage.text
+          );
+          if (!asstExists) {
+            updated.push(data.assistantMessage);
+          }
+        }
+        return updated;
+      });
+    };
+
+    const handleRemoteAiError = () => {
+      setIsExplaining(false);
+    };
+
+    const handleRemoteAiClear = () => {
+      setAiOutput('');
+      setAiChatHistory([]);
+      setAiError(null);
+    };
+
+    socket.on('ai-question', handleRemoteAiQuestion);
+    socket.on('ai-response', handleRemoteAiResponse);
+    socket.on('ai-chat-sync', handleRemoteAiChatSync);
+    socket.on('ai-response-error', handleRemoteAiError);
+    socket.on('ai-chat-clear', handleRemoteAiClear);
+
+    return () => {
+      socket.off('ai-question', handleRemoteAiQuestion);
+      socket.off('ai-response', handleRemoteAiResponse);
+      socket.off('ai-chat-sync', handleRemoteAiChatSync);
+      socket.off('ai-response-error', handleRemoteAiError);
+      socket.off('ai-chat-clear', handleRemoteAiClear);
+    };
+  }, [socket]);
 
   // Save room to recently visited in localStorage
   useEffect(() => {
@@ -928,6 +1091,9 @@ function EditorPageInner() {
               setAiOutput('');
               setAiChatHistory([]);
               setAiError(null);
+              if (socket && roomCode) {
+                socket.emit('ai-chat-clear', { roomCode });
+              }
             }}
             onCollapse={() => setIsAiPanelOpen(false)}
             width={aiPanelWidth}
@@ -982,6 +1148,9 @@ function EditorPageInner() {
                   setAiOutput('');
                   setAiChatHistory([]);
                   setAiError(null);
+                  if (socket && roomCode) {
+                    socket.emit('ai-chat-clear', { roomCode });
+                  }
                 }}
                 onCollapse={() => setIsAiPanelOpen(false)}
                 width={Math.min(aiPanelWidth, 320)}

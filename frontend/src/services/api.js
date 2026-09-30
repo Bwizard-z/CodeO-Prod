@@ -74,7 +74,7 @@ export const api = {
     return res.data;
   },
   // AI Assistant Chat & History Endpoints
-  aiChat: async ({ message, selectedCode = '', code = '', language = 'javascript', roomId = null, chatHistory = [], history = [] }) => {
+  aiChat: async ({ message, selectedCode = '', code = '', language = 'javascript', roomId = null, roomCode = null, userName = null, chatHistory = [], history = [] }) => {
     const finalHistory = Array.isArray(chatHistory) && chatHistory.length > 0 ? chatHistory : history;
     const finalCode = selectedCode || code || '';
     const res = await apiClient.post('/api/ai/chat', {
@@ -83,6 +83,8 @@ export const api = {
       code: finalCode,
       language,
       roomId,
+      roomCode: roomCode || (typeof roomId === 'string' && roomId.length <= 10 ? roomId : null),
+      userName,
       chatHistory: finalHistory,
       history: finalHistory,
     });

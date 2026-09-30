@@ -149,6 +149,40 @@ router.post('/chat', optionalAuth, aiChatLimiter, async (req, res, next) => {
       }
     }
 
+    // 3. Real-time broadcast to room peers via Socket.io
+    try {
+      const { getIo } = require('../socket');
+      const io = getIo();
+      if (io) {
+        const roomCode = (req.body.roomCode || req.body.code || roomTitle || '').toUpperCase().trim();
+        const syncPayload = {
+          userMessage: {
+            role: 'user',
+            text: message.trim(),
+            userName,
+            userId,
+            timestamp: historyItem.created_at,
+          },
+          assistantMessage: {
+            role: 'assistant',
+            text: response.message,
+            timestamp: response.timestamp || historyItem.created_at,
+          },
+          roomCode: roomCode || null,
+          roomId: resolvedRoomId || roomId,
+        };
+
+        if (roomCode) {
+          io.to(`room-${roomCode}`).emit('ai-chat-sync', syncPayload);
+        }
+        if (resolvedRoomId) {
+          io.to(`room-${resolvedRoomId}`).emit('ai-chat-sync', syncPayload);
+        }
+      }
+    } catch (socketErr) {
+      console.warn('[AI Route] Socket broadcast note:', socketErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: response.message,
