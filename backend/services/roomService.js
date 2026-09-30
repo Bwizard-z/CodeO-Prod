@@ -486,22 +486,20 @@ async function joinRoom(code, user) {
     .maybeSingle();
 
   if (existingMember) {
-    if (existingMember.is_active) {
-      throw new AppError('User already host/member of room.', 400, 'ALREADY_MEMBER');
-    }
+    // If user previously left or was inactive, reactivate membership
+    if (!existingMember.is_active) {
+      const { error: updateErr } = await supabaseAdmin
+        .from('room_members')
+        .update({
+          is_active: true,
+          kicked_at: null,
+          joined_at: new Date().toISOString(),
+        })
+        .eq('id', existingMember.id);
 
-    // Reactivate previous membership
-    const { error: updateErr } = await supabaseAdmin
-      .from('room_members')
-      .update({
-        is_active: true,
-        kicked_at: null,
-        joined_at: new Date().toISOString(),
-      })
-      .eq('id', existingMember.id);
-
-    if (updateErr) {
-      throw new AppError('Failed to rejoin room: ' + updateErr.message, 500, 'DB_ERROR');
+      if (updateErr) {
+        throw new AppError('Failed to rejoin room: ' + updateErr.message, 500, 'DB_ERROR');
+      }
     }
   } else {
     // Add new member
@@ -609,7 +607,6 @@ async function leaveRoom(identifier, userId) {
     .from('room_members')
     .update({
       is_active: false,
-      kicked_at: new Date().toISOString(),
     })
     .eq('id', member.id);
 

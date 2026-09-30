@@ -115,6 +115,15 @@ export function useRoom(autoFetch = false) {
         throw new Error(res.error || 'Room not found.');
       }
     } catch (err) {
+      // If user is already a member or host of the room, treat as successful entry
+      if (
+        err.response?.data?.code === 'ALREADY_MEMBER' ||
+        err.response?.data?.error?.toLowerCase().includes('already') ||
+        err.message?.toLowerCase().includes('already')
+      ) {
+        await getUserRooms();
+        return { success: true, code: cleanCode, room: { code: cleanCode } };
+      }
       const msg = extractError(err, 'Room not found or could not be joined.');
       setError(msg);
       return { success: false, error: msg };
