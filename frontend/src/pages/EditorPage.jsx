@@ -817,7 +817,7 @@ function EditorPageInner() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#070a10] text-white overflow-hidden select-none font-sans">
+    <div className="h-screen w-full max-w-full flex flex-col bg-[#070a10] text-white overflow-hidden select-none font-sans">
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed top-16 right-6 z-50 bg-[#111622] border border-[#fbff47]/40 text-white text-xs font-sans px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 animate-fade-in pointer-events-none">
@@ -834,12 +834,12 @@ function EditorPageInner() {
         </div>
       )}
 
-      {/* Top Header Bar - single compact row with overflow-visible and z-50 to allow dropdowns to render freely above editor */}
-      <header className="w-full bg-[#080c14] border-b border-white/10 px-2 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between gap-1.5 sm:gap-2.5 relative z-50 select-none shrink-0 min-h-[44px]">
+      {/* Top Header Bar - single compact row with overflow-visible on desktop and no-scrollbar touch scrolling on mobile to prevent clipping */}
+      <header className="w-full max-w-full bg-[#080c14] border-b border-white/10 px-1.5 sm:px-3 lg:px-4 py-1 sm:py-1.5 flex items-center justify-between gap-1 sm:gap-2 relative z-50 select-none shrink-0 min-h-[42px] sm:min-h-[46px] overflow-x-auto sm:overflow-x-visible no-scrollbar">
         {/* Left: Brand Logo, Room Pills, and Mobile/Split-screen Drawer Toggles */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0 shrink">
           <Link to="/dashboard" className="hover:opacity-85 transition-opacity flex items-center shrink-0">
-            <img src={codeoLogo} alt="CodeO" className="h-6 sm:h-7 w-auto object-contain brightness-105" />
+            <img src={codeoLogo} alt="CodeO" className="h-5 sm:h-7 w-auto object-contain brightness-105" />
           </Link>
 
           {/* Quick Toggle for Collaborators on Split Screen / Small viewports */}
@@ -847,21 +847,21 @@ function EditorPageInner() {
             type="button"
             onClick={() => setIsLeftSidebarOpen((prev) => !prev)}
             title="Toggle Collaborators Panel"
-            className="md:hidden flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-colors text-xs cursor-pointer"
+            className="md:hidden flex items-center gap-1 px-1.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-colors text-xs cursor-pointer shrink-0"
           >
             <FontAwesomeIcon icon={faUsers} className="text-[#34d399] text-xs" />
             <span className="text-[11px] font-semibold">{activeCollaboratorsCount}</span>
           </button>
 
-          {/* Room Title - shown on larger screens */}
-          <div className="hidden lg:flex bg-[#0e1424] border border-white/15 text-white px-2.5 sm:px-3 py-1 rounded-lg font-sans font-semibold text-xs tracking-wide items-center truncate max-w-[120px] sm:max-w-[190px] shadow-inner">
+          {/* Room Title - shown on wide screens to prevent crowding controls */}
+          <div className="hidden 2xl:flex bg-[#0e1424] border border-white/15 text-white px-2.5 py-1 rounded-lg font-sans font-semibold text-xs tracking-wide items-center truncate max-w-[140px] shadow-inner shrink">
             {roomLoading ? 'Loading room...' : roomInfo?.title || `Room ${roomCode}`}
           </div>
 
           {/* Room Code & Copy Buttons - always compact and responsive */}
-          <div className="bg-[#0e1424] border border-white/15 text-white px-2 sm:px-2.5 py-1 rounded-lg font-mono text-xs flex items-center gap-1 sm:gap-1.5 shadow-inner">
-            <span className="text-neutral-400 font-sans text-[10px] font-semibold uppercase">ID:</span>
-            <span className="font-semibold text-white tracking-wider text-xs">{roomCode}</span>
+          <div className="bg-[#0e1424] border border-white/15 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg font-mono text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 shadow-inner shrink-0">
+            <span className="hidden min-[400px]:inline text-neutral-400 font-sans text-[10px] font-semibold uppercase">ID:</span>
+            <span className="font-semibold text-white tracking-wider">{roomCode}</span>
 
             <div className="h-3 w-[1px] bg-white/15 mx-0.5" />
 
@@ -871,7 +871,7 @@ function EditorPageInner() {
               title="Copy Room ID"
               className="p-0.5 rounded text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             >
-              <FontAwesomeIcon icon={copiedId ? faCheck : faCopy} className={copiedId ? 'text-emerald-400 text-[11px]' : 'text-[11px]'} />
+              <FontAwesomeIcon icon={copiedId ? faCheck : faCopy} className={copiedId ? 'text-emerald-400 text-[10px] sm:text-[11px]' : 'text-[10px] sm:text-[11px]'} />
             </button>
 
             <button
@@ -886,9 +886,9 @@ function EditorPageInner() {
         </div>
 
         {/* Right: UI Scale, Language Selector, Run Code, Gemini AI Buttons */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Real-Time Connection & Live Ping Status */}
-          <div className="hidden sm:flex items-center shrink-0">
+          <div className="hidden lg:flex items-center shrink-0">
             <ConnectionStatus
               status={isConnected || yjs.isSynced || ping > 0 ? 'connected' : isReconnecting ? 'connecting' : 'disconnected'}
               isSynced={yjs.isSynced}
@@ -921,7 +921,7 @@ function EditorPageInner() {
             />
           )}
 
-          <UiScaleControl />
+          <UiScaleControl className="hidden xl:inline-block shrink-0" />
 
           {/* Language Selector Dropdown */}
           <LanguageSelector
@@ -935,7 +935,7 @@ function EditorPageInner() {
             type="button"
             onClick={handleRunCode}
             disabled={isRunning}
-            className="bg-white hover:bg-neutral-200 text-black font-sans font-semibold text-xs px-2.5 sm:px-3.5 py-1.5 rounded-lg transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="bg-white hover:bg-neutral-200 text-black font-sans font-semibold text-xs px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-lg transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0"
           >
             {isRunning ? (
               <>
@@ -966,11 +966,11 @@ function EditorPageInner() {
                 handleAskAiQuestion('Explain what this code does in clear, concise steps.', currentCode);
               }
             }}
-            className="bg-white hover:bg-neutral-200 text-black font-sans font-semibold text-xs px-2.5 sm:px-3 py-1.5 rounded-lg transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white font-sans font-semibold text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-white/20 transition-all shadow-md active:scale-95 flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0"
           >
-            <FontAwesomeIcon icon={faWandMagicSparkles} className="text-[10px] text-black" />
-            <span className="hidden md:inline">Ask Gemini</span>
-            <span className="md:hidden font-semibold">AI</span>
+            <FontAwesomeIcon icon={faWandMagicSparkles} className="text-[10px] text-amber-300 animate-pulse" />
+            <span className="hidden sm:inline">Ask </span>
+            <span>Gemini</span>
           </button>
         </div>
       </header>

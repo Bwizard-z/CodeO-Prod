@@ -198,7 +198,7 @@ export function HostPanel({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title="Host Moderation Controls"
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-sans font-medium transition-all cursor-pointer shadow-sm ${
+        className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border text-xs font-sans font-medium transition-all cursor-pointer shadow-sm shrink-0 ${
           isOpen
             ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
             : isLocked
@@ -207,7 +207,8 @@ export function HostPanel({
         }`}
       >
         <FontAwesomeIcon icon={faShieldHalved} className="text-amber-400 text-xs" />
-        <span className="hidden sm:inline">Host Controls</span>
+        <span className="hidden sm:inline lg:hidden">Host</span>
+        <span className="hidden lg:inline">Host Controls</span>
         {isLocked && (
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title="Room is Locked" />
         )}
@@ -219,7 +220,7 @@ export function HostPanel({
 
       {/* Host Controls Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-xl bg-neutral-900/95 border border-neutral-800 shadow-2xl backdrop-blur-xl z-50 overflow-hidden animate-fade-in font-sans">
+        <div className="absolute right-0 top-full mt-2 w-72 sm:w-96 max-w-[calc(100vw-24px)] rounded-xl bg-neutral-900/95 border border-neutral-800 shadow-2xl backdrop-blur-xl z-50 overflow-hidden animate-fade-in font-sans">
           {/* Header */}
           <div className="px-4 py-3 border-b border-neutral-800 flex items-center justify-between bg-neutral-950/60">
             <div className="flex items-center gap-2">

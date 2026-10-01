@@ -73,17 +73,17 @@ function AudioCallView({
           onClick={() => joinCall(roomCode, userId, 'publisher')}
           disabled={isConnecting}
           title="Join voice chat"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white transition-colors text-xs font-medium cursor-pointer disabled:opacity-50 shadow-sm shrink-0"
+          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white transition-colors text-xs font-medium cursor-pointer disabled:opacity-50 shadow-sm shrink-0"
         >
           {isConnecting ? (
             <>
-              <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs text-amber-400" />
-              <span>Connecting...</span>
+              <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs text-amber-400 shrink-0" />
+              <span className="hidden sm:inline">Connecting...</span>
             </>
           ) : (
             <>
-              <FontAwesomeIcon icon={faMicrophone} className="text-xs text-neutral-400" />
-              <span>Join Voice</span>
+              <FontAwesomeIcon icon={faMicrophone} className="text-xs text-neutral-400 shrink-0" />
+              <span className="hidden sm:inline">Voice</span>
             </>
           )}
         </button>
