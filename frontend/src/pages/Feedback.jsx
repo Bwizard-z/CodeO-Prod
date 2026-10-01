@@ -10,6 +10,7 @@ import {
   faCommentDots,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../hooks/useAuth';
+import { api } from '../services/api';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import codeoLogo from '../assets/Logo.png';
@@ -45,7 +46,7 @@ export const Feedback = () => {
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
       setErrorMsg('Please enter your name.');
@@ -63,28 +64,49 @@ export const Feedback = () => {
     setLoading(true);
     setErrorMsg('');
 
-    // Save to localStorage for demo persistence
     try {
-      const existing = JSON.parse(localStorage.getItem('codeo_feedbacks') || '[]');
-      const newReview = {
-        id: 'review-' + Date.now(),
+      await api.submitFeedback({
         name: name.trim(),
         email: email.trim(),
         rating,
         category,
         feedback: feedback.trim(),
-        date: new Date().toISOString(),
-      };
-      existing.unshift(newReview);
-      localStorage.setItem('codeo_feedbacks', JSON.stringify(existing));
-    } catch {
-      // Ignored
-    }
+        metadata: {
+          screenWidth: typeof window !== 'undefined' ? window.innerWidth : null,
+          screenHeight: typeof window !== 'undefined' ? window.innerHeight : null,
+          referrer: typeof document !== 'undefined' ? document.referrer || null : null,
+        },
+      });
 
-    setTimeout(() => {
-      setLoading(false);
+      // Maintain local cache as offline fallback
+      try {
+        const existing = JSON.parse(localStorage.getItem('codeo_feedbacks') || '[]');
+        const newReview = {
+          id: 'review-' + Date.now(),
+          name: name.trim(),
+          email: email.trim(),
+          rating,
+          category,
+          feedback: feedback.trim(),
+          date: new Date().toISOString(),
+        };
+        existing.unshift(newReview);
+        localStorage.setItem('codeo_feedbacks', JSON.stringify(existing));
+      } catch {
+        // Ignored
+      }
+
       setSubmitted(true);
-    }, 700);
+    } catch (err) {
+      console.warn('Feedback submission notice:', err);
+      const errMsg =
+        err?.response?.data?.error ||
+        err?.message ||
+        'Unable to submit feedback at this moment. Please try again.';
+      setErrorMsg(errMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReset = () => {

@@ -17,6 +17,7 @@ const executeRoutes = require('./routes/execute');
 const explainRoutes = require('./routes/explain');
 const aiRoutes = require('./routes/ai');
 const agoraRoutes = require('./routes/agora');
+const feedbackRoutes = require('./routes/feedback');
 const { errorHandler } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
@@ -113,6 +114,7 @@ app.use(['/api/execute', '/execute'], executeRoutes);
 app.use(['/api/explain', '/explain'], explainRoutes);
 app.use(['/api/ai', '/ai'], aiRoutes);
 app.use(['/api/agora', '/agora'], agoraRoutes);
+app.use(['/api/feedback', '/feedback'], feedbackRoutes);
 
 const fs = require('fs');
 

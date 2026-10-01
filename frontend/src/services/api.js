@@ -169,6 +169,22 @@ export const api = {
     const res = await apiClient.get(`/api/rooms/${roomId}/members`);
     return res.data;
   },
+  // Feedback System Endpoints
+  submitFeedback: async ({ name, email, rating, category, feedback, metadata }) => {
+    const res = await apiClient.post('/api/feedback', {
+      name,
+      email,
+      rating,
+      category,
+      feedback,
+      metadata,
+    });
+    return res.data;
+  },
+  getFeedbackStats: async () => {
+    const res = await apiClient.get('/api/feedback/stats');
+    return res.data;
+  },
 };
 
 export default api;

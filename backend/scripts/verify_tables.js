@@ -20,8 +20,10 @@ const TABLES_TO_CHECK = [
   'room_members',
   'code_history',
   'room_activity_log',
+  'feedback',
   'view_active_rooms',
   'view_room_summary',
+  'view_feedback_summary',
 ];
 
 async function verifyAll() {
