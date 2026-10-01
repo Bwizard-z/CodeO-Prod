@@ -185,6 +185,14 @@ export const api = {
     const res = await apiClient.get('/api/feedback/stats');
     return res.data;
   },
+  getFeedbacks: async ({ page = 1, limit = 20, rating, category, status } = {}) => {
+    const params = { page, limit };
+    if (rating && rating !== 'All') params.rating = rating;
+    if (category && category !== 'All') params.category = category;
+    if (status && status !== 'All') params.status = status;
+    const res = await apiClient.get('/api/feedback', { params });
+    return res.data;
+  },
 };
 
 export default api;

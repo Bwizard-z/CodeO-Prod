@@ -17,6 +17,7 @@ import EditorPage from '../pages/EditorPage';
 import AuthCallback from '../pages/AuthCallback';
 import Features from '../pages/Features';
 import Feedback from '../pages/Feedback';
+import HonestlyCodeo from '../pages/HonestlyCodeo';
 import JoinRoom from '../pages/JoinRoom';
 
 // Catch-all 404 handler that directs logged-in users to dashboard and guests to landing
@@ -77,6 +78,8 @@ export const AppRoutes = () => {
       {/* Pages accessible to both logged-in and logged-out users */}
       <Route path="/features" element={<Features />} />
       <Route path="/feedback" element={<Feedback />} />
+      {/* Unlisted route for owner/admin to view all feedback reviews */}
+      <Route path="/honestlycodeo" element={<HonestlyCodeo />} />
       <Route path="/join" element={<JoinRoom />} />
       <Route path="/join-room" element={<JoinRoom />} />
 
