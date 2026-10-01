@@ -61,7 +61,10 @@ export function useSocket(roomCode, user = null) {
       setIsReconnecting(false);
 
       // Join collaborative room channel
-      const userAvatar = user?.avatar || user?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+      const shouldUseInitials = Boolean(user?.use_initials || user?.user_metadata?.use_initials);
+      const userAvatar = shouldUseInitials
+        ? null
+        : (user?.avatar || user?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null);
       newSocket.emit('join-room', {
         roomCode: cleanCode,
         user: {

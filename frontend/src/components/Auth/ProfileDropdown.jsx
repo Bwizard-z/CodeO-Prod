@@ -26,7 +26,7 @@ const PRESET_AVATARS = [
 ];
 
 export const ProfileDropdown = () => {
-  const { user, isEmailVerified, updateProfile, resetPassword, signOut } = useAuth();
+  const { user, isEmailVerified, updateProfile, resetPassword, signOut, googleAvatar: authGoogleAvatar } = useAuth();
   const navigate = useNavigate();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -39,15 +39,26 @@ export const ProfileDropdown = () => {
     user?.email?.split('@')[0] ||
     'User';
 
-  const avatarUrl =
-    user?.user_metadata?.avatar_url ||
-    user?.user_metadata?.picture ||
+  const shouldUseInitials = Boolean(user?.user_metadata?.use_initials);
+
+  const avatarUrl = shouldUseInitials
+    ? null
+    : (user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null);
+
+  const googleAvatar =
+    authGoogleAvatar ||
+    user?.user_metadata?.google_avatar_url ||
+    user?.identities?.find((id) => id.provider === 'google')?.identity_data?.avatar_url ||
+    user?.identities?.find((id) => id.provider === 'google')?.identity_data?.picture ||
+    (typeof user?.user_metadata?.avatar_url === 'string' && user?.user_metadata?.avatar_url.includes('googleusercontent.com')
+      ? user?.user_metadata?.avatar_url
+      : null) ||
     null;
 
   const initial = (username.charAt(0) || 'U').toUpperCase();
 
   const [nameInput, setNameInput] = useState(username);
-  const [selectedAvatar, setSelectedAvatar] = useState(avatarUrl || PRESET_AVATARS[0]);
+  const [selectedAvatar, setSelectedAvatar] = useState(avatarUrl || null);
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
 
   // Status feedback states
@@ -60,7 +71,7 @@ export const ProfileDropdown = () => {
   // Sync inputs when user data updates
   useEffect(() => {
     setNameInput(username);
-    if (avatarUrl) setSelectedAvatar(avatarUrl);
+    setSelectedAvatar(avatarUrl || null);
   }, [username, avatarUrl]);
 
   // Outside click listener to smoothly close dropdown
@@ -118,18 +129,38 @@ export const ProfileDropdown = () => {
 
   // Handle Avatar Update
   const handleSaveAvatar = async (avatarToSave) => {
-    const finalAvatar = avatarToSave || customAvatarUrl.trim() || selectedAvatar;
-    if (!finalAvatar) return;
+    // avatarToSave can be explicitly passed:
+    // - null: reset to default initials
+    // - googleAvatar: restore original Google profile avatar
+    // - preset URL / custom URL
+    const isResettingToInitials = avatarToSave === null;
+    const finalAvatar =
+      avatarToSave !== undefined
+        ? avatarToSave
+        : (customAvatarUrl.trim() || selectedAvatar);
+
+    if (!isResettingToInitials && !finalAvatar) return;
 
     setLoading(true);
     setStatusMsg({ type: '', text: '' });
 
-    const result = await updateProfile({ avatar_url: finalAvatar });
+    const result = await updateProfile({
+      avatar_url: isResettingToInitials ? null : finalAvatar,
+      use_initials: isResettingToInitials,
+    });
     setLoading(false);
 
     if (result.success) {
-      setSelectedAvatar(finalAvatar);
-      setStatusMsg({ type: 'success', text: 'Avatar updated successfully!' });
+      setSelectedAvatar(isResettingToInitials ? null : finalAvatar);
+      if (isResettingToInitials) {
+        setCustomAvatarUrl('');
+        setStatusMsg({ type: 'success', text: 'Reset to default name initials successfully!' });
+      } else if (finalAvatar === googleAvatar) {
+        setCustomAvatarUrl('');
+        setStatusMsg({ type: 'success', text: 'Restored Google account avatar successfully!' });
+      } else {
+        setStatusMsg({ type: 'success', text: 'Avatar updated successfully!' });
+      }
       setTimeout(() => {
         setCurrentView('menu');
         setStatusMsg({ type: '', text: '' });
@@ -410,38 +441,152 @@ export const ProfileDropdown = () => {
               </div>
             )}
 
+            {/* 1. Default / Connected Account Avatars */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-sans font-bold uppercase tracking-wider text-neutral-400">
+                Default Avatars
+              </div>
+
+              {/* Name Initials Option */}
+              <button
+                type="button"
+                onClick={() => handleSaveAvatar(null)}
+                disabled={loading}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer text-left group ${
+                  !avatarUrl || shouldUseInitials
+                    ? 'bg-emerald-950/40 border-[#4ade80] ring-1 ring-[#4ade80]/40'
+                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#4ade80] flex items-center justify-center text-black font-sans font-bold text-sm shadow-sm shrink-0">
+                    {initial}
+                  </div>
+                  <div>
+                    <div className="font-sans font-semibold text-xs text-white flex items-center gap-1.5">
+                      <span>Name Initials</span>
+                      <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-white/10 text-neutral-300 font-normal">Default</span>
+                    </div>
+                    <div className="text-[11px] text-neutral-400 font-sans">
+                      Initials circle based on "{username}"
+                    </div>
+                  </div>
+                </div>
+
+                {(!avatarUrl || shouldUseInitials) ? (
+                  <span className="px-2 py-0.5 rounded-full bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40 text-[10px] font-sans font-semibold flex items-center gap-1 shrink-0">
+                    <FontAwesomeIcon icon={faCheck} className="text-[9px]" />
+                    <span>Active</span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-neutral-400 group-hover:text-white font-sans shrink-0 font-medium">
+                    Use
+                  </span>
+                )}
+              </button>
+
+              {/* Google Account Profile Photo (if user has Google avatar) */}
+              {googleAvatar && (
+                <button
+                  type="button"
+                  onClick={() => handleSaveAvatar(googleAvatar)}
+                  disabled={loading}
+                  className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer text-left group ${
+                    avatarUrl === googleAvatar && !shouldUseInitials
+                      ? 'bg-emerald-950/40 border-[#4ade80] ring-1 ring-[#4ade80]/40'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-9 h-9 rounded-full shrink-0">
+                      <img
+                        src={googleAvatar}
+                        alt="Google Account"
+                        className="w-9 h-9 rounded-full object-cover border border-white/20"
+                      />
+                      {/* Google G badge */}
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-sm">
+                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24">
+                          <path
+                            fill="#4285F4"
+                            d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"
+                          />
+                          <path
+                            fill="#34A853"
+                            d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.48 7.35 24 12 24z"
+                          />
+                          <path
+                            fill="#FBBC05"
+                            d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.41l4.02-3.09z"
+                          />
+                          <path
+                            fill="#EA4335"
+                            d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.29 2.52 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z"
+                          />
+                        </svg>
+                      </span>
+                    </div>
+                    <div>
+                      <div className="font-sans font-semibold text-xs text-white flex items-center gap-1.5">
+                        <span>Google Profile Photo</span>
+                        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-white/10 text-neutral-300 font-normal">Google</span>
+                      </div>
+                      <div className="text-[11px] text-neutral-400 font-sans">
+                        Original photo from your Google Account
+                      </div>
+                    </div>
+                  </div>
+
+                  {avatarUrl === googleAvatar && !shouldUseInitials ? (
+                    <span className="px-2 py-0.5 rounded-full bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40 text-[10px] font-sans font-semibold flex items-center gap-1 shrink-0">
+                      <FontAwesomeIcon icon={faCheck} className="text-[9px]" />
+                      <span>Active</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs text-neutral-400 group-hover:text-white font-sans shrink-0 font-medium">
+                      Restore
+                    </span>
+                  )}
+                </button>
+              )}
+            </div>
+
             {/* Presets Grid */}
             <div>
               <div className="text-[11px] font-sans font-bold uppercase tracking-wider text-neutral-400 mb-2">
                 Preset Avatars
               </div>
               <div className="grid grid-cols-3 gap-3">
-                {PRESET_AVATARS.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setSelectedAvatar(preset);
-                      handleSaveAvatar(preset);
-                    }}
-                    className={`relative p-1.5 rounded-xl border transition-all cursor-pointer bg-white/5 hover:bg-white/10 flex items-center justify-center ${
-                      selectedAvatar === preset
-                        ? 'border-[#4ade80] ring-2 ring-[#4ade80]/40'
-                        : 'border-white/10 hover:border-white/30'
-                    }`}
-                  >
-                    <img
-                      src={preset}
-                      alt={`Avatar ${idx + 1}`}
-                      className="w-12 h-12 rounded-lg object-contain"
-                    />
-                    {selectedAvatar === preset && (
-                      <span className="absolute top-1 right-1 w-4 h-4 bg-[#22c55e] text-black rounded-full flex items-center justify-center text-[9px] font-bold shadow-sm">
-                        <FontAwesomeIcon icon={faCheck} />
-                      </span>
-                    )}
-                  </button>
-                ))}
+                {PRESET_AVATARS.map((preset, idx) => {
+                  const isPresetActive = selectedAvatar === preset && avatarUrl === preset && !shouldUseInitials;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => {
+                        setSelectedAvatar(preset);
+                        handleSaveAvatar(preset);
+                      }}
+                      className={`relative p-1.5 rounded-xl border transition-all cursor-pointer bg-white/5 hover:bg-white/10 flex items-center justify-center ${
+                        isPresetActive
+                          ? 'border-[#4ade80] ring-2 ring-[#4ade80]/40'
+                          : 'border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <img
+                        src={preset}
+                        alt={`Avatar ${idx + 1}`}
+                        className="w-12 h-12 rounded-lg object-contain"
+                      />
+                      {isPresetActive && (
+                        <span className="absolute top-1 right-1 w-4 h-4 bg-[#22c55e] text-black rounded-full flex items-center justify-center text-[9px] font-bold shadow-sm">
+                          <FontAwesomeIcon icon={faCheck} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

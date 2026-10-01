@@ -13,8 +13,10 @@ export const UserAvatar = React.memo(function UserAvatar({
   const [imgError, setImgError] = useState(false);
 
   const name = (user?.name || user?.user_metadata?.user_name || 'Collaborator').trim();
+  const shouldUseInitials = Boolean(user?.use_initials || user?.user_metadata?.use_initials);
   const avatarUrl =
     !imgError &&
+    !shouldUseInitials &&
     (user?.avatar ||
       user?.avatar_url ||
       user?.picture ||

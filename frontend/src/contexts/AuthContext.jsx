@@ -229,7 +229,26 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const updateProfile = async ({ name, avatar_url }) => {
+  const getGoogleAvatar = (u) => {
+    if (!u) return null;
+    const gIdent = u.identities?.find(
+      (id) => id.provider === 'google' || id.identity_data?.avatar_url?.includes('googleusercontent.com')
+    );
+    return (
+      gIdent?.identity_data?.avatar_url ||
+      gIdent?.identity_data?.picture ||
+      u.user_metadata?.google_avatar_url ||
+      (typeof u.user_metadata?.avatar_url === 'string' && u.user_metadata.avatar_url.includes('googleusercontent.com')
+        ? u.user_metadata.avatar_url
+        : null) ||
+      (typeof u.user_metadata?.picture === 'string' && u.user_metadata.picture.includes('googleusercontent.com')
+        ? u.user_metadata.picture
+        : null) ||
+      null
+    );
+  };
+
+  const updateProfile = async ({ name, avatar_url, use_initials }) => {
     setError(null);
     try {
       const updates = {};
@@ -238,8 +257,21 @@ export function AuthProvider({ children }) {
         updates.name = name;
       }
       if (avatar_url !== undefined) {
-        updates.avatar_url = avatar_url;
-        updates.picture = avatar_url;
+        updates.avatar_url = avatar_url || null;
+        updates.picture = avatar_url || null;
+      }
+      if (use_initials !== undefined) {
+        updates.use_initials = Boolean(use_initials);
+      } else if (avatar_url) {
+        updates.use_initials = false;
+      } else if (avatar_url === null) {
+        updates.use_initials = true;
+      }
+
+      // Preserve Google avatar if detected so user can always revert back
+      const googleAvatar = getGoogleAvatar(user);
+      if (googleAvatar && !user?.user_metadata?.google_avatar_url) {
+        updates.google_avatar_url = googleAvatar;
       }
 
       const { data, error: updateErr } = await supabase.auth.updateUser({
@@ -248,6 +280,14 @@ export function AuthProvider({ children }) {
 
       if (updateErr) throw updateErr;
       if (data?.user) {
+        if (updates.use_initials) {
+          data.user.user_metadata = {
+            ...data.user.user_metadata,
+            avatar_url: null,
+            picture: null,
+            use_initials: true,
+          };
+        }
         setUser(data.user);
       }
       return { success: true, data };
@@ -260,6 +300,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
+    googleAvatar: getGoogleAvatar(user),
     session,
     loading,
     error,

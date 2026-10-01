@@ -52,13 +52,18 @@ export const Sidebar = ({
     'You'
   ).trim();
 
-  const currentUserAvatar =
-    currentUser?.avatar ||
-    currentUser?.avatar_url ||
-    currentUser?.picture ||
-    currentUser?.user_metadata?.avatar_url ||
-    currentUser?.user_metadata?.picture ||
-    null;
+  const shouldUseInitials = Boolean(
+    currentUser?.use_initials || currentUser?.user_metadata?.use_initials
+  );
+
+  const currentUserAvatar = shouldUseInitials
+    ? null
+    : (currentUser?.avatar ||
+      currentUser?.avatar_url ||
+      currentUser?.picture ||
+      currentUser?.user_metadata?.avatar_url ||
+      currentUser?.user_metadata?.picture ||
+      null);
 
   // Audio state extraction
   const isAudioConnected = Boolean(audio?.isConnected);

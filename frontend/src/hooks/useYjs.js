@@ -101,7 +101,10 @@ export function useYjs(roomCode, user = null) {
     const awareness = provider.awareness;
 
     // Set initial awareness
-    const userAvatar = user?.avatar || user?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+    const shouldUseInitials = Boolean(user?.use_initials || user?.user_metadata?.use_initials);
+    const userAvatar = shouldUseInitials
+      ? null
+      : (user?.avatar || user?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null);
     awareness.setLocalStateField('user', {
       name: userName,
       color: assignedColor.hex,
@@ -204,7 +207,10 @@ export function useYjs(roomCode, user = null) {
   // 2. Dynamically update awareness when user info or color changes without reconnecting provider
   useEffect(() => {
     if (providerRef.current && providerRef.current.awareness && docRef.current) {
-      const userAvatar = user?.avatar || user?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+      const shouldUseInitials = Boolean(user?.use_initials || user?.user_metadata?.use_initials);
+      const userAvatar = shouldUseInitials
+        ? null
+        : (user?.avatar || user?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null);
       providerRef.current.awareness.setLocalStateField('user', {
         name: userName,
         color: assignedColor.hex,
@@ -214,7 +220,7 @@ export function useYjs(roomCode, user = null) {
         avatar: userAvatar,
       });
     }
-  }, [userName, assignedColor, user?.id, user?.avatar, user?.avatar_url, user?.user_metadata?.avatar_url, user?.user_metadata?.picture]);
+  }, [userName, assignedColor, user?.id, user?.avatar, user?.avatar_url, user?.user_metadata?.avatar_url, user?.user_metadata?.picture, user?.user_metadata?.use_initials, user?.use_initials]);
 
   return {
     doc,
