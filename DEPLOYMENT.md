@@ -1,6 +1,9 @@
 # 🚀 CODEO - Production VPS Deployment Guide (Google Cloud / Linux)
 
 > Complete, step-by-step production deployment guide for running **CodeO** (Frontend React SPA + Unified Node.js Backend + WebSockets + Self-Hosted Judge0 Engine) on a Linux Virtual Private Server (Google Cloud Compute Engine, DigitalOcean, AWS EC2, or Hetzner).
+>
+> 🎓 **A College Project By [Bharanindra Acharya](https://www.linkedin.com/in/bharanindra-acharya-229887395?utm_source=share_via&utm_content=profile&utm_medium=member_android)**  
+> 🌐 **Live Production Deployment:** [https://codeo.duckdns.org](https://codeo.duckdns.org)
 
 ---
 
@@ -86,14 +89,14 @@ sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
 ```
 
-### 2. Install Node.js 20 LTS
+### 2. Install Node.js 22 LTS (Required for native WebSocket support)
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 
 # Verify versions
-node -v   # v20.x.x
-npm -v    # v10.x.x
+node -v   # v22.x.x
+npm -v    # v10.x.x / v11.x.x
 ```
 
 ### 3. Install PM2 Process Manager Globally
@@ -189,6 +192,9 @@ VITE_AGORA_APP_ID=your-agora-app-id
 
 ### 4. Install Dependencies & Build Frontend
 ```bash
+# If cloned on Linux after Windows development, ensure platform binaries are resolved:
+rm -rf package-lock.json node_modules frontend/node_modules backend/node_modules
+
 # Install monorepo dependencies
 npm install
 
@@ -207,6 +213,9 @@ pm2 start backend/server.js --name codeo
 pm2 save
 pm2 startup
 # (Run the generated sudo env command that PM2 displays)
+
+# Ensure Judge0 Docker containers auto-restart on VM reboot
+sudo docker update --restart always $(sudo docker ps -q)
 ```
 
 Verify status:

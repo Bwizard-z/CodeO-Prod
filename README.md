@@ -1,6 +1,9 @@
-# 🚀 CODEO - Google Cloud Platform (GCP) Setup & Deployment Guide
+# 🚀 CODEO - Real-time Collaborative Code Editor & Studio
 
-> **CodeO** is a real-time collaborative code editor and development studio featuring live Yjs document sync, Monaco editor, Socket.io presence, Agora voice & video chat, Gemini AI explanations, and Judge0 code execution.
+> **CodeO** is a production-grade, real-time collaborative code editor and development studio featuring live Yjs CRDT document synchronization, Monaco editor, Socket.io presence & cursors, Agora voice/video communication, Google Gemini AI code analysis, and self-hosted Judge0 isolated multi-language code execution.
+>
+> 🎓 **A College Project By [Bharanindra Acharya](https://www.linkedin.com/in/bharanindra-acharya-229887395?utm_source=share_via&utm_content=profile&utm_medium=member_android)**  
+> 🌐 **Live Demo:** [https://codeo.duckdns.org](https://codeo.duckdns.org)
 
 This guide provides end-to-end instructions for provisioning a **Google Cloud Platform (GCP) Compute Engine VM**, configuring VPC firewalls, setting up system services, and deploying CodeO with zero downtime and automatic SSL.
 
@@ -172,13 +175,13 @@ sudo apt install -y docker.io docker-compose
 sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
 
-# 4. Install Node.js 20 LTS
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# 4. Install Node.js 22 LTS (Required for native WebSocket & modern Supabase SDK)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 
 # Verify Node and npm
-node -v  # v20.x.x
-npm -v   # v10.x.x
+node -v  # v22.x.x
+npm -v   # v10.x.x / v11.x.x
 
 # 5. Install PM2 process manager globally
 sudo npm install -g pm2
@@ -282,6 +285,9 @@ VITE_AGORA_APP_ID=your-agora-app-id
 
 ### 3. Install Dependencies & Build Frontend
 ```bash
+# If cloned on Linux after Windows development, ensure platform binaries are fetched:
+rm -rf package-lock.json node_modules frontend/node_modules backend/node_modules
+
 # Install all root, backend, and frontend dependencies
 npm install
 
@@ -305,6 +311,9 @@ pm2 save
 # Setup PM2 systemd startup hook for automatic restart upon VM reboot
 pm2 startup
 # (Run the sudo command that PM2 prints on screen)
+
+# Ensure Judge0 Docker containers auto-restart on VM reboot
+sudo docker update --restart always $(sudo docker ps -q)
 ```
 
 Check server status:
