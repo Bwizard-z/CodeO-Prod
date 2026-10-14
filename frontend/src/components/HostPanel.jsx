@@ -34,9 +34,6 @@ export function HostPanel({
   const [editOverrides, setEditOverrides] = useState({}); // { memberId: boolean } for instant UI
   const panelRef = useRef(null);
 
-  // If user is not the host, do not render host controls
-  if (!isHost) return null;
-
   const {
     isLocked = false,
     lockRoom = () => {},
@@ -141,6 +138,9 @@ export function HostPanel({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, kickConfirmMember]);
+
+  // If user is not the host, do not render host controls
+  if (!isHost) return null;
 
   const showToast = (message, type = 'success') => {
     setFeedbackToast({ message, type });

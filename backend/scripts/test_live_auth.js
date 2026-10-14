@@ -2,7 +2,7 @@
 const axios = require('axios');
 const { supabaseAdmin } = require('../services/supabase');
 
-const BASE_URL = 'http://192.168.0.101:5000';
+const BASE_URL = 'http://localhost:5000';
 
 async function runLiveTest() {
   console.log('========================================================');

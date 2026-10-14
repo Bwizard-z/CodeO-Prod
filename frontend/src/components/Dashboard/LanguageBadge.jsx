@@ -1,125 +1,150 @@
-import React from 'react';
+// components/Dashboard/LanguageBadge.jsx - Modern Crisp Language Badge
+import React, { useState } from 'react';
 
-export const LanguageBadge = ({ language = 'javascript' }) => {
-  const normalized = (language || '').toLowerCase();
+const LANGUAGE_ICONS = {
+  python: {
+    name: 'Python',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg',
+    abbr: 'PY',
+    bgColor: 'bg-[#0f1a2e]',
+    borderColor: 'border-[#3776ab]/30',
+  },
+  py: {
+    name: 'Python',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg',
+    abbr: 'PY',
+    bgColor: 'bg-[#0f1a2e]',
+    borderColor: 'border-[#3776ab]/30',
+  },
+  javascript: {
+    name: 'JavaScript',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg',
+    abbr: 'JS',
+    bgColor: 'bg-[#1f1d0b]',
+    borderColor: 'border-[#f7df1e]/30',
+  },
+  js: {
+    name: 'JavaScript',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg',
+    abbr: 'JS',
+    bgColor: 'bg-[#1f1d0b]',
+    borderColor: 'border-[#f7df1e]/30',
+  },
+  typescript: {
+    name: 'TypeScript',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg',
+    abbr: 'TS',
+    bgColor: 'bg-[#0c182c]',
+    borderColor: 'border-[#3178c6]/30',
+  },
+  ts: {
+    name: 'TypeScript',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg',
+    abbr: 'TS',
+    bgColor: 'bg-[#0c182c]',
+    borderColor: 'border-[#3178c6]/30',
+  },
+  java: {
+    name: 'Java',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg',
+    abbr: 'JAVA',
+    bgColor: 'bg-[#1e1010]',
+    borderColor: 'border-[#e76f00]/30',
+  },
+  cpp: {
+    name: 'C++',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg',
+    abbr: 'C++',
+    bgColor: 'bg-[#0a1728]',
+    borderColor: 'border-[#00599c]/30',
+  },
+  'c++': {
+    name: 'C++',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg',
+    abbr: 'C++',
+    bgColor: 'bg-[#0a1728]',
+    borderColor: 'border-[#00599c]/30',
+  },
+  c: {
+    name: 'C',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg',
+    abbr: 'C',
+    bgColor: 'bg-[#0a1728]',
+    borderColor: 'border-[#00599c]/30',
+  },
+  html: {
+    name: 'HTML5',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg',
+    abbr: 'HTML',
+    bgColor: 'bg-[#220e09]',
+    borderColor: 'border-[#e34f26]/30',
+  },
+  css: {
+    name: 'CSS3',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg',
+    abbr: 'CSS',
+    bgColor: 'bg-[#08182c]',
+    borderColor: 'border-[#1572b6]/30',
+  },
+  react: {
+    name: 'React',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg',
+    abbr: 'REACT',
+    bgColor: 'bg-[#081b28]',
+    borderColor: 'border-[#61dafb]/30',
+  },
+  node: {
+    name: 'Node.js',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg',
+    abbr: 'NODE',
+    bgColor: 'bg-[#0e1e12]',
+    borderColor: 'border-[#339933]/30',
+  },
+  go: {
+    name: 'Go',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg',
+    abbr: 'GO',
+    bgColor: 'bg-[#081d28]',
+    borderColor: 'border-[#00add8]/30',
+  },
+  rust: {
+    name: 'Rust',
+    url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rust/rust-original.svg',
+    abbr: 'RS',
+    bgColor: 'bg-[#1e130c]',
+    borderColor: 'border-[#dea584]/30',
+  },
+};
 
-  if (normalized.includes('python') || normalized === 'py') {
-    return (
-      <div className="w-12 h-12 rounded-xl bg-[#0f1f38] border border-[#3874a4]/40 flex items-center justify-center p-2.5 shadow-md">
-        <svg viewBox="0 0 256 256" className="w-full h-full object-contain">
-          <defs>
-            <linearGradient id="pyBlue" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3874a4" />
-              <stop offset="100%" stopColor="#25557c" />
-            </linearGradient>
-            <linearGradient id="pyYellow" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffd845" />
-              <stop offset="100%" stopColor="#f5b820" />
-            </linearGradient>
-          </defs>
-          <path
-            fill="url(#pyBlue)"
-            d="M126.9 8.2c-47.5 0-44.5 20.6-44.5 20.6l.1 21.4h45.2v6.4H65.8C18.6 56.6 22 97.4 22 97.4s-3.7 24.3 22 24.3h13.1v-18.4c0-21 17.5-19.8 17.5-19.8h45.4c17.5 0 16.3-16.7 16.3-16.7V25.2c0-17-9.4-17-9.4-17zm-25.1 13.7c4.6 0 8.3 3.7 8.3 8.3s-3.7 8.3-8.3 8.3-8.3-3.7-8.3-8.3 3.7-8.3 8.3-8.3z"
-          />
-          <path
-            fill="url(#pyYellow)"
-            d="M129.1 247.8c47.5 0 44.5-20.6 44.5-20.6l-.1-21.4h-45.2v-6.4h61.9c47.2 0 43.8-40.8 43.8-40.8s3.7-24.3-22-24.3h-13.1v18.4c0 21-17.5 19.8-17.5 19.8H136c-17.5 0-16.3 16.7-16.3 16.7v41.6c0 17 9.4 17 9.4 17zm25.1-13.7c-4.6 0-8.3-3.7-8.3-8.3s3.7-8.3 8.3-8.3 8.3 3.7 8.3 8.3-3.7 8.3-8.3 8.3z"
-          />
-        </svg>
-      </div>
-    );
-  }
+export const LanguageBadge = ({ language = 'javascript', className = '' }) => {
+  const [imgError, setImgError] = useState(false);
+  const normalized = (language || 'javascript').toLowerCase().trim();
+  const config = LANGUAGE_ICONS[normalized] || {
+    name: language || 'Code',
+    url: null,
+    abbr: (language || 'DEV').substring(0, 3).toUpperCase(),
+    bgColor: 'bg-white/5',
+    borderColor: 'border-white/10',
+  };
 
-  if (normalized.includes('javascript') || normalized === 'js') {
-    return (
-      <div className="w-12 h-12 rounded-xl bg-[#f7df1e] flex items-center justify-center p-2 shadow-md">
-        <span className="font-sans font-black text-black text-xl tracking-tighter select-none">
-          JS
-        </span>
-      </div>
-    );
-  }
-
-  if (normalized.includes('c++') || normalized.includes('cpp')) {
-    return (
-      <div className="w-12 h-12 rounded-xl bg-[#00599c] flex items-center justify-center p-1.5 shadow-md border border-[#007cdb]">
-        <span className="font-sans font-black text-white text-lg tracking-tight select-none">
-          C++
-        </span>
-      </div>
-    );
-  }
-
-  if (normalized.includes('java') && !normalized.includes('script')) {
-    return (
-      <div className="w-12 h-12 rounded-xl bg-[#2b1010] border border-[#ea2d2e]/50 flex items-center justify-center p-2 shadow-md">
-        <svg viewBox="0 0 24 24" className="w-8 h-8 fill-[#ea2d2e]">
-          <path d="M4 19h16v1H4v-1zm14.5-9c.3 0 .5.1.7.3.2.2.3.4.3.7 0 .8-.5 1.5-1.2 1.8-.2.8-.7 1.4-1.3 1.9-.8.7-1.8 1.1-2.9 1.2-.5.5-1.1.8-1.8 1-.9.2-1.8.3-2.7.2-.6 0-1.2-.1-1.8-.3-.6-.2-1.1-.5-1.5-.9-.4-.4-.7-.9-.8-1.4-.2-.5-.2-1-.2-1.6 0-.6.1-1.2.3-1.8.2-.5.5-1 .8-1.5.3-.4.8-.8 1.3-1.1.5-.3 1.1-.5 1.7-.7.6-.2 1.3-.2 1.9-.2.5 0 1 .1 1.5.2.5.1.9.3 1.3.6.4.2.8.5 1.1.9.3.4.5.8.6 1.3.7.1 1.3.4 1.7.8.2.2.4.4.4.7zm-2.8 1.7c-.1-.7-.4-1.3-.9-1.7-.5-.4-1.1-.6-1.8-.6-.6 0-1.2.2-1.7.5-.5.3-.9.7-1.2 1.2-.3.5-.5 1-.6 1.5-.1.5-.1 1 0 1.5.1.4.3.8.6 1.1.3.3.7.5 1.1.6.5.1 1 .1 1.4 0 .5-.1.9-.3 1.3-.6.5-.4.8-.9 1-1.5.4-.1.7-.3.9-.6.2-.3.2-.6.1-.9-.1-.2-.4-.4-.7-.4-.2-.1-.4-.1-.5-.1z" />
-          <path d="M9 3c.5.8.5 1.8 0 2.5-.5.8-1.5 1.2-2 2-.5.8-.5 1.8 0 2.5.2.3.4.6.7.8-.5-.8-.5-1.8 0-2.5.5-.8 1.5-1.2 2-2 .5-.8.5-1.8 0-2.5-.2-.3-.4-.6-.7-.8z" />
-        </svg>
-      </div>
-    );
-  }
-
-  if (normalized.includes('react')) {
-    return (
-      <div className="w-12 h-12 rounded-xl bg-[#0d2238] border border-[#61dafb]/40 flex items-center justify-center p-2 shadow-md">
-        <svg viewBox="-11.5 -10.23174 23 20.46348" className="w-8 h-8 fill-none stroke-[#61dafb]">
-          <circle cx="0" cy="0" r="2.05" fill="#61dafb" />
-          <g strokeWidth="1">
-            <ellipse rx="11" ry="4.2" />
-            <ellipse rx="11" ry="4.2" transform="rotate(60)" />
-            <ellipse rx="11" ry="4.2" transform="rotate(120)" />
-          </g>
-        </svg>
-      </div>
-    );
-  }
-
-  if (normalized.includes('node')) {
-    return (
-      <div className="w-12 h-12 rounded-xl bg-[#0e2716] border border-[#539e43]/40 flex items-center justify-center p-2 shadow-md">
-        <svg viewBox="0 0 24 24" className="w-8 h-8 fill-[#539e43]">
-          <path d="M12 2L3 7.2v10.4L12 22.8l9-5.2V7.2L12 2zm0 2.3l6.9 4v7.9L12 20.2l-6.9-4V8.3L12 4.3zm-1 3.7v8h2v-8h-2z" />
-        </svg>
-      </div>
-    );
-  }
-
-  if (normalized.includes('html')) {
-    return (
-      <div className="w-12 h-12 rounded-xl bg-[#e34f26] flex items-center justify-center p-2 shadow-md">
-        <span className="font-sans font-black text-white text-xl tracking-tight select-none">
-          5
-        </span>
-      </div>
-    );
-  }
-
-  if (normalized.includes('css')) {
-    return (
-      <div className="w-12 h-12 rounded-xl bg-[#1572b6] flex items-center justify-center p-2 shadow-md">
-        <span className="font-sans font-black text-white text-xl tracking-tight select-none">
-          3
-        </span>
-      </div>
-    );
-  }
-
-  if (normalized.includes('typescript') || normalized === 'ts') {
-    return (
-      <div className="w-12 h-12 rounded-xl bg-[#3178c6] flex items-center justify-center p-2 shadow-md">
-        <span className="font-sans font-black text-white text-xl tracking-tight select-none">
-          TS
-        </span>
-      </div>
-    );
-  }
-
-  // Default Code Icon Badge
   return (
-    <div className="w-12 h-12 rounded-xl bg-[#1e293b] border border-white/20 flex items-center justify-center p-2 shadow-md">
-      <span className="font-mono font-bold text-white text-base select-none">&lt;/&gt;</span>
+    <div
+      title={config.name}
+      className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl ${config.bgColor} border ${config.borderColor} flex items-center justify-center p-2.5 shadow-md shadow-black/40 transition-all select-none shrink-0 ${className}`}
+    >
+      {config.url && !imgError ? (
+        <img
+          src={config.url}
+          alt={config.name}
+          onError={() => setImgError(true)}
+          className="w-full h-full object-contain filter drop-shadow select-none pointer-events-none"
+          loading="lazy"
+        />
+      ) : (
+        <span className="font-mono font-black text-xs sm:text-sm text-neutral-300 tracking-wider">
+          {config.abbr}
+        </span>
+      )}
     </div>
   );
 };

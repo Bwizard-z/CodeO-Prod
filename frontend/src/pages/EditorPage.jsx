@@ -21,7 +21,7 @@ import { useSocket } from '../hooks/useSocket';
 import { usePing } from '../hooks/usePing';
 import { useCodeExecution } from '../hooks/useCodeExecution';
 import api from '../services/api';
-import Editor from '../components/Editor';
+import Editor, { STARTER_SNIPPETS } from '../components/Editor';
 import OutputPanel from '../components/OutputPanel';
 import ConnectionStatus from '../components/ConnectionStatus';
 import LanguageSelector from '../components/LanguageSelector';
@@ -413,7 +413,23 @@ function EditorPageInner() {
         if (isMounted && res.success && res.room) {
           setRoomInfo(res.room);
           if (res.room.language) {
-            setLanguage(res.room.language.toLowerCase());
+            const cleanLang = res.room.language.toLowerCase();
+            setLanguage(cleanLang);
+
+            // If the document is currently empty or has default starter snippet, ensure correct room boilerplate
+            if (yjs?.yText && yjs?.doc) {
+              const currentText = yjs.yText.toString().trim();
+              const allSnippets = Object.values(STARTER_SNIPPETS).map((s) => s.trim());
+              if (currentText === '' || allSnippets.includes(currentText)) {
+                const targetSnippet = res.room.code_content || STARTER_SNIPPETS[cleanLang] || STARTER_SNIPPETS.javascript;
+                if (currentText !== targetSnippet.trim()) {
+                  yjs.doc.transact(() => {
+                    yjs.yText.delete(0, yjs.yText.length);
+                    yjs.yText.insert(0, targetSnippet);
+                  }, 'room-language-seed');
+                }
+              }
+            }
           }
           if (res.room.is_locked) {
             setIsLocked(true);
@@ -648,9 +664,35 @@ function EditorPageInner() {
     setTimeout(() => setToastMsg(''), 2500);
   };
 
-  // Language switch handler (updates state, broadcasts to peers, persists to DB)
+  // Language switch handler (updates state, broadcasts to peers, swaps boilerplate if code is default)
   const handleLanguageChange = (newLanguage) => {
-    setLanguage(newLanguage);
+    const cleanLang = (newLanguage || 'javascript').toLowerCase().trim();
+    setLanguage(cleanLang);
+
+    // If editor text is currently empty or matches a default starter snippet of any language,
+    // seamlessly update the editor to the newly selected language's starter snippet
+    if (yjs?.yText && yjs?.doc) {
+      const currentText = yjs.yText.toString().trim();
+      const allSnippets = Object.values(STARTER_SNIPPETS).map((s) => s.trim());
+      if (currentText === '' || allSnippets.includes(currentText)) {
+        const nextSnippet = STARTER_SNIPPETS[cleanLang] || STARTER_SNIPPETS.javascript;
+        yjs.doc.transact(() => {
+          yjs.yText.delete(0, yjs.yText.length);
+          yjs.yText.insert(0, nextSnippet);
+        }, 'language-change-boilerplate');
+      }
+    }
+
+    // Broadcast language change to connected peers
+    if (socket && roomCode) {
+      socket.emit('language-change', {
+        roomCode,
+        language: cleanLang,
+        userName: currentUserName,
+      });
+    }
+
+    showToast(`Switched language to ${newLanguage}`);
   };
 
   // Code Execution Handler (runs code via backend Judge0 API, broadcasts output to peers)

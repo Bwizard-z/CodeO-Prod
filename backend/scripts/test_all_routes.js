@@ -3,7 +3,7 @@ const http = require('http');
 function postJson(path, payload) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(payload);
-    const req = http.request('http://192.168.0.101:5000' + path, {
+    const req = http.request('http://localhost:5000' + path, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,7 +22,7 @@ function postJson(path, payload) {
 
 function getJson(path) {
   return new Promise((resolve, reject) => {
-    http.get('http://192.168.0.101:5000' + path, res => {
+    http.get('http://localhost:5000' + path, res => {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => resolve({ status: res.statusCode, body }));

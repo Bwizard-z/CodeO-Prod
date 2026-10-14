@@ -2,8 +2,8 @@
 const { io } = require('socket.io-client');
 const axios = require('axios');
 
-const SOCKET_URL = 'http://192.168.0.101:5000';
-const API_URL = 'http://192.168.0.101:5000/api';
+const SOCKET_URL = 'http://localhost:5000';
+const API_URL = 'http://localhost:5000/api';
 const TEST_ROOM = 'TEST_ROOM_' + Math.floor(Math.random() * 10000);
 
 async function runTests() {

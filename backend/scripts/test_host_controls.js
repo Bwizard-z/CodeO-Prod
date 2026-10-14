@@ -2,8 +2,8 @@ const { supabase, supabaseAdmin } = require('../services/supabase');
 const axios = require('axios');
 const { io: Client } = require('socket.io-client');
 
-const BASE_URL = 'http://192.168.0.101:5000';
-const SOCKET_URL = 'http://192.168.0.101:5000';
+const BASE_URL = 'http://localhost:5000';
+const SOCKET_URL = 'http://localhost:5000';
 
 async function runTests() {
   console.log('=== STARTING HOST CONTROLS TESTS ===\n');

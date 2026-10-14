@@ -263,6 +263,17 @@ async function createRoom({ title, description, language = 'javascript', userId 
   const code = await getUniqueRoomCode();
   const inviteToken = await getUniqueInviteToken();
 
+  const cleanLang = (language || 'javascript').toLowerCase().trim();
+  const STARTER_SNIPPETS = {
+    javascript: '// JavaScript in CodeO\nconsole.log("Hello from CodeO!");\n',
+    python: '# Python in CodeO\nprint("Hello from CodeO!")\n',
+    cpp: '// C++ in CodeO\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from CodeO!" << std::endl;\n    return 0;\n}\n',
+    'c++': '// C++ in CodeO\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from CodeO!" << std::endl;\n    return 0;\n}\n',
+    java: '// Java in CodeO\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from CodeO!");\n    }\n}\n',
+    typescript: '// TypeScript in CodeO\nconsole.log("Hello from CodeO!");\n',
+  };
+  const initialBoilerplate = STARTER_SNIPPETS[cleanLang] || STARTER_SNIPPETS.javascript;
+
   const { data: room, error: roomError } = await supabaseAdmin
     .from('rooms')
     .insert({
@@ -270,9 +281,9 @@ async function createRoom({ title, description, language = 'javascript', userId 
       invite_token: inviteToken,
       title: cleanTitle,
       description: (description || '').trim() || null,
-      language: (language || 'javascript').toLowerCase().trim(),
+      language: cleanLang,
       created_by: userId,
-      code_content: '',
+      code_content: initialBoilerplate,
       is_locked: false,
       is_archived: false,
     })
@@ -486,20 +497,21 @@ async function joinRoom(code, user) {
     .maybeSingle();
 
   if (existingMember) {
+    if (existingMember.is_active) {
+      throw new AppError('You are already a member of this room.', 400, 'ALREADY_MEMBER');
+    }
     // If user previously left or was inactive, reactivate membership
-    if (!existingMember.is_active) {
-      const { error: updateErr } = await supabaseAdmin
-        .from('room_members')
-        .update({
-          is_active: true,
-          kicked_at: null,
-          joined_at: new Date().toISOString(),
-        })
-        .eq('id', existingMember.id);
+    const { error: updateErr } = await supabaseAdmin
+      .from('room_members')
+      .update({
+        is_active: true,
+        kicked_at: null,
+        joined_at: new Date().toISOString(),
+      })
+      .eq('id', existingMember.id);
 
-      if (updateErr) {
-        throw new AppError('Failed to rejoin room: ' + updateErr.message, 500, 'DB_ERROR');
-      }
+    if (updateErr) {
+      throw new AppError('Failed to rejoin room: ' + updateErr.message, 500, 'DB_ERROR');
     }
   } else {
     // Add new member

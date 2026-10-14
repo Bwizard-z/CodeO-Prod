@@ -23,8 +23,8 @@ async function testVoiceModeration() {
   console.log(`Room: ${room.code}, Host User ID: ${hostUserId}`);
 
   // Create two socket clients: Host and Participant
-  const hostClient = io('http://192.168.0.101:5000', { transports: ['websocket'] });
-  const participantClient = io('http://192.168.0.101:5000', { transports: ['websocket'] });
+  const hostClient = io('http://localhost:5000', { transports: ['websocket'] });
+  const participantClient = io('http://localhost:5000', { transports: ['websocket'] });
 
   await new Promise((resolve) => {
     let hostJoined = false;

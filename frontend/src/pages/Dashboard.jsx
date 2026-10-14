@@ -37,8 +37,6 @@ export const Dashboard = () => {
 
   // Search & Sorting state
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'title' | 'created'
-
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -69,7 +67,7 @@ export const Dashboard = () => {
     }
   };
 
-  // Filter and sort active rooms
+  // Filter active rooms by search query (backend already orders by created_at DESC)
   const processedRooms = useMemo(() => {
     let list = [...(rooms || [])];
 
@@ -85,20 +83,8 @@ export const Dashboard = () => {
       );
     }
 
-    // Sorting
-    list.sort((a, b) => {
-      if (sortBy === 'title') {
-        return (a.title || '').localeCompare(b.title || '');
-      }
-      if (sortBy === 'created') {
-        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-      }
-      // Default: 'recent'
-      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-    });
-
     return list;
-  }, [rooms, searchQuery, sortBy]);
+  }, [rooms, searchQuery]);
 
   // Loading Screen during initial authentication check
   if (authLoading) {
@@ -190,17 +176,6 @@ export const Dashboard = () => {
                 className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#fbff47] transition-all font-sans"
               />
             </div>
-
-            {/* Sort Selector */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-[#111622] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-neutral-300 focus:outline-none focus:border-[#fbff47] transition-all font-sans cursor-pointer"
-            >
-              <option value="recent">Sort: Recently Created</option>
-              <option value="title">Sort: Title (A-Z)</option>
-              <option value="created">Sort: Oldest First</option>
-            </select>
 
             {/* Refresh Button */}
             <button

@@ -27,13 +27,13 @@ const MONACO_LANGUAGE_MAP = {
   php: 'php',
 };
 
-const STARTER_SNIPPETS = {
+export const STARTER_SNIPPETS = {
   javascript: '// JavaScript in CodeO\nconsole.log("Hello from CodeO!");\n',
   python: '# Python in CodeO\nprint("Hello from CodeO!")\n',
   cpp: '// C++ in CodeO\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from CodeO!" << std::endl;\n    return 0;\n}\n',
   'c++': '// C++ in CodeO\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from CodeO!" << std::endl;\n    return 0;\n}\n',
   java: '// Java in CodeO\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from CodeO!");\n    }\n}\n',
-  typescript: '// TypeScript in CodeO\nconsole.log("Hello from CodeO!");\n',
+  typescript: '// TypeScript in CodeO\nconst greeting: string = "Hello from CodeO!";\nconsole.log(greeting);\n',
 };
 
 export function Editor({
@@ -347,23 +347,23 @@ export function Editor({
     if (onMount) onMount(editor, monaco);
   };
 
-  // Safely seed initial code ONLY ONCE when the room first syncs and if document is truly empty
+  // Safely seed initial code when the room first syncs and if document is truly empty
   const hasSeededRef = useRef(false);
   useEffect(() => {
-    if (!isSynced || !yText || hasSeededRef.current) return;
+    if (!isSynced || !yText) return;
 
-    if (yText.length === 0) {
+    if (yText.length === 0 && !hasSeededRef.current) {
       hasSeededRef.current = true;
       const langKey = (language || 'javascript').toLowerCase();
       const defaultSnippet = STARTER_SNIPPETS[langKey] || STARTER_SNIPPETS.javascript;
-      const codeToLoad = initialCode || defaultSnippet;
+      const codeToLoad = (initialCode && initialCode.trim().length > 0) ? initialCode : defaultSnippet;
 
       if (codeToLoad) {
         doc?.transact(() => {
           yText.insert(0, codeToLoad);
         }, 'initial-seed');
       }
-    } else {
+    } else if (yText.length > 0) {
       hasSeededRef.current = true;
     }
   }, [isSynced, yText, doc, language, initialCode]);

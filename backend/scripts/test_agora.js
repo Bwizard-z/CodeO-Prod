@@ -17,7 +17,7 @@ function postJson(path, payload, token = null) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const req = http.request('http://192.168.0.101:5000' + path, {
+    const req = http.request('http://localhost:5000' + path, {
       method: 'POST',
       headers,
     }, res => {
@@ -139,8 +139,8 @@ async function runTests() {
   // 3. Socket.io Events Tests
   console.log('\n3. Testing Socket.io Audio Communication Events...');
   await new Promise((resolve) => {
-    const socketClient1 = io('http://192.168.0.101:5000', { transports: ['websocket'] });
-    const socketClient2 = io('http://192.168.0.101:5000', { transports: ['websocket'] });
+    const socketClient1 = io('http://localhost:5000', { transports: ['websocket'] });
+    const socketClient2 = io('http://localhost:5000', { transports: ['websocket'] });
 
     let joinedReceived = false;
     let audioEnabledReceived = false;

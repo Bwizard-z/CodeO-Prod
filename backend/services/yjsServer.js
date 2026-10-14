@@ -93,11 +93,26 @@ function getOrCreateRoom(roomCode) {
     .eq('code', code)
     .maybeSingle()
     .then(({ data: roomRecord }) => {
-      if (roomRecord && typeof roomRecord.code_content === 'string' && roomRecord.code_content.length > 0) {
-        const yText = doc.getText('monaco');
-        if (yText.length === 0) {
+      const yText = doc.getText('monaco');
+      if (yText.length === 0) {
+        let codeToLoad = '';
+        if (roomRecord && typeof roomRecord.code_content === 'string' && roomRecord.code_content.length > 0) {
+          codeToLoad = roomRecord.code_content;
+        } else if (roomRecord?.language) {
+          const l = roomRecord.language.toLowerCase().trim();
+          const STARTER_SNIPPETS = {
+            javascript: '// JavaScript in CodeO\nconsole.log("Hello from CodeO!");\n',
+            python: '# Python in CodeO\nprint("Hello from CodeO!")\n',
+            cpp: '// C++ in CodeO\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from CodeO!" << std::endl;\n    return 0;\n}\n',
+            'c++': '// C++ in CodeO\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from CodeO!" << std::endl;\n    return 0;\n}\n',
+            java: '// Java in CodeO\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from CodeO!");\n    }\n}\n',
+            typescript: '// TypeScript in CodeO\nconsole.log("Hello from CodeO!");\n',
+          };
+          codeToLoad = STARTER_SNIPPETS[l] || STARTER_SNIPPETS.javascript;
+        }
+        if (codeToLoad) {
           doc.transact(() => {
-            yText.insert(0, roomRecord.code_content);
+            yText.insert(0, codeToLoad);
           }, 'initial-load');
         }
       }
@@ -165,7 +180,7 @@ function setupYjsConnection(conn, req) {
   // Examples: /yjs/ABC123, /yjs?room=ABC123, or standard /ABC123
   let roomCode = 'DEFAULT';
   try {
-    const urlObj = new URL(req.url, 'http://192.168.0.101:5000/');
+    const urlObj = new URL(req.url, 'http://localhost:5000/');
     const pathParts = urlObj.pathname.split('/').filter(Boolean);
     if (pathParts.length > 0) {
       roomCode = pathParts[pathParts.length - 1];

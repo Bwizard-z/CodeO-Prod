@@ -1,7 +1,7 @@
 // scripts/test_auth_routes.js - End-to-end integration test for auth endpoints
 const axios = require('axios');
 
-const BASE_URL = 'http://192.168.0.101:5000';
+const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:5000';
 
 async function testRoutes() {
   console.log('========================================================');

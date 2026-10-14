@@ -7,31 +7,9 @@ import {
   faCopy,
   faCheck,
   faTrash,
-  faUsers,
-  faClock,
-  faCode,
   faLock,
 } from '@fortawesome/free-solid-svg-icons';
 import LanguageBadge from './Dashboard/LanguageBadge';
-
-export function formatRelativeTime(dateString) {
-  if (!dateString) return 'Recently';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return 'Recently';
-
-  const diffSec = Math.floor((new Date() - date) / 1000);
-  if (diffSec < 60) return 'Just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 30) return `${diffDays} days ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  if (diffMonths < 12) return `${diffMonths}mo ago`;
-  return `${Math.floor(diffMonths / 12)}y ago`;
-}
 
 export function RoomCard({
   room,
@@ -48,8 +26,6 @@ export function RoomCard({
   const title = room.title || room.name || 'Untitled Room';
   const description = room.description || 'No description provided.';
   const language = room.language || 'javascript';
-  const memberCount = room.active_members_count ?? room.members_count ?? 1;
-  const relativeDate = formatRelativeTime(room.created_at || room.updated_at);
 
   const handleCopyCode = async (e) => {
     e.stopPropagation();
@@ -128,45 +104,31 @@ export function RoomCard({
         </p>
       </div>
 
-      {/* Footer: Metadata & Actions */}
-      <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs text-neutral-400">
-        <div className="flex items-center gap-3 font-sans">
-          <span className="flex items-center gap-1.5">
-            <FontAwesomeIcon icon={faUsers} className="text-[11px] text-neutral-500" />
-            <span>{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <FontAwesomeIcon icon={faClock} className="text-[11px] text-neutral-500" />
-            <span>{relativeDate}</span>
-          </span>
-        </div>
-
-        {/* Card Actions: [Delete] [Open] */}
-        <div className="flex items-center gap-2">
-          {onDelete && (
-            <button
-              type="button"
-              onClick={handleDeleteClick}
-              disabled={deleting}
-              title="Delete room"
-              className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-950/30 transition-all active:scale-95 disabled:opacity-50"
-            >
-              <FontAwesomeIcon icon={faTrash} className="text-xs" />
-            </button>
-          )}
-
+      {/* Footer: Card Actions */}
+      <div className="pt-3 border-t border-white/5 flex items-center justify-end gap-2 text-xs">
+        {onDelete && (
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenRoom();
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-all active:scale-95 shadow-sm"
+            onClick={handleDeleteClick}
+            disabled={deleting}
+            title="Delete room"
+            className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-950/30 transition-all active:scale-95 disabled:opacity-50"
           >
-            <span>Open</span>
-            <FontAwesomeIcon icon={faPlay} className="text-[9px]" />
+            <FontAwesomeIcon icon={faTrash} className="text-xs" />
           </button>
-        </div>
+        )}
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenRoom();
+          }}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-all active:scale-95 shadow-sm"
+        >
+          <span>Open</span>
+          <FontAwesomeIcon icon={faPlay} className="text-[9px]" />
+        </button>
       </div>
     </div>
   );

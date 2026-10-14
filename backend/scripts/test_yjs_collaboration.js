@@ -5,7 +5,7 @@ const WebSocket = require('ws');
 async function testCollaboration() {
   console.log('=== TEST: Yjs Multi-Client Real-Time Collaboration & Awareness Cleanup ===');
   const roomName = `ROOM_COLLAB_${Date.now()}`;
-  const serverUrl = 'ws://192.168.0.101:5000/yjs';
+  const serverUrl = 'ws://localhost:5000/yjs';
 
   const doc1 = new Y.Doc();
   const doc2 = new Y.Doc();

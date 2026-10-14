@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_BASE = 'http://192.168.0.101:5000/api/execute';
+const API_BASE = 'http://localhost:5000/api/execute';
 
 async function runTests() {
   console.log('=== TEST 1: GET /api/execute/languages ===');

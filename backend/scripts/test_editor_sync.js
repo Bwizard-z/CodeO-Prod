@@ -9,8 +9,8 @@ const encoding = require('lib0/dist/encoding.cjs');
 const decoding = require('lib0/dist/decoding.cjs');
 const axios = require('axios');
 
-const BASE_HTTP_URL = 'http://192.168.0.101:5000';
-const WS_URL = 'ws://192.168.0.101:5000/yjs/TESTROOM';
+const BASE_HTTP_URL = process.env.TEST_BASE_URL || 'http://localhost:5000';
+const WS_URL = `${BASE_HTTP_URL.replace(/^http/, 'ws')}/yjs/TESTROOM`;
 
 // Helper to wire a Y.Doc to a WebSocket client according to the Yjs protocol
 function wireYjsClient(ws, doc) {
@@ -55,7 +55,7 @@ async function runEditorSyncTests() {
     console.log('   [PASS] Health check verified.\n');
 
     // 2. Connect two WebSocket clients to Yjs room
-    console.log('2. Connecting Client 1 & Client 2 to Yjs WebSocket (ws://192.168.0.101:5000/yjs/TESTROOM)...');
+    console.log('2. Connecting Client 1 & Client 2 to Yjs WebSocket (ws://localhost:5000/yjs/TESTROOM)...');
 
     const doc1 = new Y.Doc();
     const doc2 = new Y.Doc();
