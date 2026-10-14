@@ -3,6 +3,16 @@ const dotenv = require('dotenv');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+// Polyfill global WebSocket for Supabase Realtime in environments without native global WebSocket
+if (typeof globalThis.WebSocket === 'undefined') {
+  try {
+    globalThis.WebSocket = require('ws');
+  } catch (err) {
+    // ignore if ws is not yet resolved
+  }
+}
+
 const { createClient } = require('@supabase/supabase-js');
 
 const rawUrl = process.env.SUPABASE_URL || '';

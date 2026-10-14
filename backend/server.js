@@ -1,6 +1,15 @@
 const path = require('path');
 const dotenv = require('dotenv');
 
+// Polyfill global WebSocket for Supabase Realtime and Node environments
+if (typeof globalThis.WebSocket === 'undefined') {
+  try {
+    globalThis.WebSocket = require('ws');
+  } catch (err) {
+    // ws package fallback
+  }
+}
+
 // Load environment variables from backend/.env or root .env regardless of execution directory
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
