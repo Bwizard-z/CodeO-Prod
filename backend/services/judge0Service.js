@@ -168,7 +168,17 @@ async function handleExecution(code, languageId, stdin = '') {
     const isTimeout = statusId === 5; // 5 = Time Limit Exceeded
     const isCompileError = statusId === 6; // 6 = Compilation Error
     const isRuntimeError = statusId >= 7 && statusId <= 12;
+    const isInternalError = statusId >= 13;
     const isStillQueued = statusId === 1 || statusId === 2;
+
+    console.log('[Judge0 Result]', {
+      statusId,
+      statusDesc,
+      stdout: stdout ? stdout.slice(0, 100) : null,
+      stderr: stderr ? stderr.slice(0, 100) : null,
+      compileOutput: compileOutput ? compileOutput.slice(0, 100) : null,
+      message,
+    });
 
     // Determine clean output
     let cleanOutput = '';
@@ -178,12 +188,16 @@ async function handleExecution(code, languageId, stdin = '') {
       cleanOutput = 'Time Limit Exceeded (>5s)';
     } else if (isRuntimeError) {
       cleanOutput = stderr || message || `Runtime Error: ${statusDesc}`;
+    } else if (isInternalError) {
+      cleanOutput = message || stderr || `Judge0 Execution Error: ${statusDesc} (Code ${statusId})`;
     } else if (isStillQueued) {
       cleanOutput = `Execution timed out waiting in worker queue (${statusDesc}). Please ensure Judge0 Docker workers are running.`;
     } else if (stderr && !stdout) {
       cleanOutput = stderr;
-    } else {
+    } else if (isSuccess) {
       cleanOutput = stdout || 'Program finished with no output.';
+    } else {
+      cleanOutput = stderr || message || stdout || `Program finished (${statusDesc})`;
     }
 
     const executionTimeMs = data.time ? Math.round(parseFloat(data.time) * 1000) : 0;
