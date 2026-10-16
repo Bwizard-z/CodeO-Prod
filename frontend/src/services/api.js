@@ -27,13 +27,17 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 30000,
 });
 
-// Attach Supabase auth token automatically to all requests
+// Attach Supabase auth token automatically to all requests with a timeout safeguard
 apiClient.interceptors.request.use(async (config) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    // Prevent getSession from hanging if browser local storage locks contend across multiple concurrent tabs
+    const sessionPromise = supabase.auth.getSession();
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), 2500));
+    const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+
     const token = session?.access_token || localStorage.getItem('codeo_auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

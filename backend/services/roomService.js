@@ -393,34 +393,37 @@ async function getRoomByCode(code) {
     throw new AppError('Room not found.', 404, 'ROOM_NOT_FOUND');
   }
 
-  // Fetch host user details
-  const { data: hostUser } = await supabaseAdmin
-    .from('users')
-    .select('id, name, email')
-    .eq('id', room.created_by)
-    .maybeSingle();
-
-  // Fetch active members list
-  const { data: members } = await supabaseAdmin
-    .from('room_members')
-    .select(`
-      id,
-      user_id,
-      anonymous_name,
-      role,
-      can_edit,
-      is_muted,
-      is_active,
-      joined_at,
-      users (
+  // Fetch host user details and active members list in parallel for maximum speed
+  const [hostResult, membersResult] = await Promise.all([
+    supabaseAdmin
+      .from('users')
+      .select('id, name, email')
+      .eq('id', room.created_by)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('room_members')
+      .select(`
         id,
-        name,
-        email
-      )
-    `)
-    .eq('room_id', room.id)
-    .eq('is_active', true)
-    .order('joined_at', { ascending: true });
+        user_id,
+        anonymous_name,
+        role,
+        can_edit,
+        is_muted,
+        is_active,
+        joined_at,
+        users (
+          id,
+          name,
+          email
+        )
+      `)
+      .eq('room_id', room.id)
+      .eq('is_active', true)
+      .order('joined_at', { ascending: true }),
+  ]);
+
+  const hostUser = hostResult.data;
+  const members = membersResult.data;
 
   const formattedMembers = (members || []).map((m) => ({
     id: m.id,
