@@ -127,10 +127,34 @@ async function handleExecution(code, languageId, stdin = '') {
   };
 
   try {
-    const data = await judge0Request('POST', '/submissions', payload, {
+    let data = await judge0Request('POST', '/submissions', payload, {
       base64_encoded: true,
       wait: true,
     });
+
+    // If Judge0 returned In Queue (1) or Processing (2), poll until execution finishes
+    const token = data?.token;
+    if (token && (data?.status?.id === 1 || data?.status?.id === 2 || !data?.status)) {
+      let attempts = 0;
+      while (attempts < 20) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        try {
+          const pollRes = await judge0Request('GET', `/submissions/${token}`, null, {
+            base64_encoded: true,
+          });
+          if (pollRes && pollRes.status?.id) {
+            data = pollRes;
+            if (pollRes.status.id > 2) {
+              // Status completed: 3 (Accepted), 5 (Time Limit), 6 (Compile Error), 7-12 (Runtime Error), etc.
+              break;
+            }
+          }
+        } catch (pollErr) {
+          console.warn('[Judge0] Polling attempt error:', pollErr.message);
+        }
+        attempts++;
+      }
+    }
 
     // Decode outputs
     const stdout = decodeBase64(data.stdout);
@@ -144,6 +168,7 @@ async function handleExecution(code, languageId, stdin = '') {
     const isTimeout = statusId === 5; // 5 = Time Limit Exceeded
     const isCompileError = statusId === 6; // 6 = Compilation Error
     const isRuntimeError = statusId >= 7 && statusId <= 12;
+    const isStillQueued = statusId === 1 || statusId === 2;
 
     // Determine clean output
     let cleanOutput = '';
@@ -153,6 +178,8 @@ async function handleExecution(code, languageId, stdin = '') {
       cleanOutput = 'Time Limit Exceeded (>5s)';
     } else if (isRuntimeError) {
       cleanOutput = stderr || message || `Runtime Error: ${statusDesc}`;
+    } else if (isStillQueued) {
+      cleanOutput = `Execution timed out waiting in worker queue (${statusDesc}). Please ensure Judge0 Docker workers are running.`;
     } else if (stderr && !stdout) {
       cleanOutput = stderr;
     } else {
