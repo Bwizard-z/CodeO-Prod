@@ -431,9 +431,6 @@ function EditorPageInner() {
               }
             }
           }
-          if (res.room.is_locked) {
-            setIsLocked(true);
-          }
         } else {
           throw new Error(res.error || 'Room not found.');
         }
@@ -969,7 +966,7 @@ function EditorPageInner() {
           <LanguageSelector
             language={language}
             onChange={handleLanguageChange}
-            disabled={isLocked}
+            disabled={!isHost && isLocked}
           />
 
           {/* Run Code Button */}
@@ -1098,9 +1095,10 @@ function EditorPageInner() {
             <Editor
               roomCode={roomCode}
               language={language}
-              readOnly={isLocked || !roomControl.canEdit}
+              readOnly={!isHost && isLocked}
               isLocked={isLocked}
               canEdit={roomControl.canEdit}
+              isHost={isHost}
               yjsState={yjs}
               initialCode={roomInfo?.code_content || ''}
               ping={ping}

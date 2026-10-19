@@ -42,6 +42,7 @@ export function Editor({
   readOnly = false,
   isLocked = false,
   canEdit = true,
+  isHost = false,
   yjsState,
   initialCode = '',
   onMount,
@@ -53,7 +54,7 @@ export function Editor({
   ping = 0,
   quality = null,
 }) {
-  const isEffectiveReadOnly = Boolean(readOnly || isLocked || canEdit === false);
+  const isEffectiveReadOnly = Boolean(readOnly || (!isHost && isLocked) || (!isHost && canEdit === false));
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const containerRef = useRef(null);
@@ -527,7 +528,7 @@ export function Editor({
       </div>
 
       {/* Read-Only Mode Banner (When user can_edit is disabled by host) */}
-      {!canEdit && (
+      {!isHost && !canEdit && (
         <div className="px-3.5 py-1.5 bg-rose-950/90 border-b border-rose-500/40 text-rose-200 text-xs font-sans flex items-center justify-between gap-2 shadow-sm animate-fade-in shrink-0">
           <div className="flex items-center gap-2">
             <FontAwesomeIcon icon={faBan} className="text-rose-400 text-xs shrink-0" />
@@ -537,13 +538,24 @@ export function Editor({
         </div>
       )}
 
-      {/* Room Locked Banner (When room is_locked is true and canEdit wasn't already false) */}
-      {canEdit && isLocked && (
+      {/* Room Locked Banner for Members (When room is_locked is true for regular members) */}
+      {!isHost && canEdit && isLocked && (
         <div className="px-3.5 py-1.5 bg-amber-950/90 border-b border-amber-500/40 text-amber-200 text-xs font-sans flex items-center justify-between gap-2 shadow-sm animate-fade-in shrink-0">
           <div className="flex items-center gap-2">
             <FontAwesomeIcon icon={faLock} className="text-amber-400 text-xs shrink-0" />
             <span className="font-bold">Room is locked:</span>
             <span>The host has set this room to read-only mode.</span>
+          </div>
+        </div>
+      )}
+
+      {/* Room Locked Indicator for Host (Host can still edit) */}
+      {isHost && isLocked && (
+        <div className="px-3.5 py-1.5 bg-amber-950/60 border-b border-amber-500/30 text-amber-200 text-xs font-sans flex items-center justify-between gap-2 shadow-sm animate-fade-in shrink-0">
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faLock} className="text-amber-400 text-xs shrink-0" />
+            <span className="font-bold">Room is locked:</span>
+            <span>Only you (Host) can edit. Other members are in read-only mode.</span>
           </div>
         </div>
       )}

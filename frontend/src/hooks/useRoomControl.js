@@ -505,7 +505,7 @@ export function useRoomControl({
 
   return {
     isLocked,
-    canEdit: canEdit && !isLocked && !isKicked,
+    canEdit: isHost ? (canEdit && !isKicked) : (canEdit && !isLocked && !isKicked),
     rawCanEdit: canEdit,
     isMuted,
     isKicked,
