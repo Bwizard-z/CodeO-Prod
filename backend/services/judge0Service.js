@@ -10,6 +10,8 @@ const LANGUAGE_MAP = {
   java: 62,
   'c++': 54,
   cpp: 54,
+  typescript: 74,
+  ts: 74,
 };
 
 const SUPPORTED_LANGUAGES = {
@@ -17,6 +19,7 @@ const SUPPORTED_LANGUAGES = {
   71: 'Python',
   62: 'Java',
   54: 'C++',
+  74: 'TypeScript',
 };
 
 // Cached resolved working base URL for Judge0

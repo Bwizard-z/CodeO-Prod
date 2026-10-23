@@ -7,6 +7,7 @@ export const SUPPORTED_LANGUAGES = [
   { id: 71, name: 'Python', key: 'python', ext: '.py', icon: 'py' },
   { id: 62, name: 'Java', key: 'java', ext: '.java', icon: 'java' },
   { id: 54, name: 'C++', key: 'cpp', ext: '.cpp', icon: 'cpp' },
+  { id: 74, name: 'TypeScript', key: 'typescript', ext: '.ts', icon: 'ts' },
 ];
 
 const MAX_CODE_BYTES = 100 * 1024; // 100KB

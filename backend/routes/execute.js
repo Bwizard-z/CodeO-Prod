@@ -37,7 +37,7 @@ router.post('/', executeLimiter, optionalAuth, async (req, res, next) => {
     if (!language) {
       return res.status(400).json({
         success: false,
-        error: 'Language parameter is required. Supported: JavaScript, Python, Java, C++',
+        error: 'Language parameter is required. Supported: JavaScript, Python, Java, C++, TypeScript',
       });
     }
 
@@ -191,6 +191,7 @@ router.get('/languages', async (req, res, next) => {
       { id: 71, name: 'Python', key: 'python' },
       { id: 62, name: 'Java', key: 'java' },
       { id: 54, name: 'C++', key: 'cpp' },
+      { id: 74, name: 'TypeScript', key: 'typescript' },
     ];
 
     return res.status(200).json({

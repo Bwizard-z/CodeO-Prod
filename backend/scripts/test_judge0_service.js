@@ -23,6 +23,11 @@ async function test() {
   const javaRes = await judge0Service.submitCode(javaCode, 'java');
   console.log('Java output:', JSON.stringify(javaRes.output), 'status:', javaRes.status_id, 'error:', javaRes.error);
 
+  console.log('\n--- Testing TypeScript ---');
+  const tsCode = 'const greeting: string = "Hello TypeScript from Judge0"; console.log(greeting);';
+  const tsRes = await judge0Service.submitCode(tsCode, 'typescript');
+  console.log('TS output:', JSON.stringify(tsRes.output), 'status:', tsRes.status_id, 'error:', tsRes.error);
+
   console.log('\n--- Testing Unsupported Language ---');
   try {
     await judge0Service.submitCode('puts "test"', 'ruby');

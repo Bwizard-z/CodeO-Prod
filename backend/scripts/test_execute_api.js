@@ -53,6 +53,17 @@ async function runTests() {
   console.log('Output:', JSON.stringify(javaRes.data.output));
   console.log('Status ID:', javaRes.data.status_id, 'Error:', javaRes.data.error);
 
+  console.log('\n=== TEST 5b: POST /api/execute (TypeScript) ===');
+  const tsRes = await axios.post(`${API_BASE}`, {
+    language: 'typescript',
+    code: 'const greeting: string = "TypeScript Execution Successful!"; console.log(greeting);',
+    roomId: 'ASRH8V',
+    userName: 'TesterTS',
+  });
+  console.log('Status:', tsRes.status);
+  console.log('Output:', JSON.stringify(tsRes.data.output));
+  console.log('Status ID:', tsRes.data.status_id, 'Error:', tsRes.data.error);
+
   console.log('\n=== TEST 6: POST /api/execute (Stdin Input) ===');
   const stdinRes = await axios.post(`${API_BASE}`, {
     language: 'python',
