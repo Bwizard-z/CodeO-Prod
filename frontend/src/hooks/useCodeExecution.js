@@ -89,22 +89,18 @@ export function useCodeExecution(roomCode, user = null, socket = null) {
     };
   }, [socket, language]);
 
-  // 2. Set Language with LocalStorage & Socket sync
+  // 2. Set Language with LocalStorage (pure local updater, room-level socket broadcasts are handled by EditorPage)
   const setLanguage = useCallback((newLang) => {
     if (!newLang) return;
     const clean = newLang.toLowerCase().trim();
-    setLanguageState(clean);
+    setLanguageState((prev) => {
+      if (prev === clean) return prev;
+      return clean;
+    });
     try {
       localStorage.setItem('codeo_preferred_language', clean);
     } catch {}
-
-    if (socket && roomCode) {
-      socket.emit('language-change', {
-        roomCode,
-        language: clean,
-      });
-    }
-  }, [socket, roomCode]);
+  }, []);
 
   // 3. Clear output & stats
   const clearOutput = useCallback(() => {

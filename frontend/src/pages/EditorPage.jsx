@@ -160,8 +160,28 @@ function EditorPageInner() {
   const [copiedId, setCopiedId] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  // Toast feedback
+  // Toast feedback with timeout management
   const [toastMsg, setToastMsg] = useState('');
+  const toastTimeoutRef = useRef(null);
+  const showToast = useCallback((msg) => {
+    if (!msg) return;
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToastMsg(msg);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMsg('');
+      toastTimeoutRef.current = null;
+    }, 2500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // 1. Initialize Yjs Real-Time Synchronization Hook
   const yjs = useYjs(roomCode, effectiveUser);
@@ -218,6 +238,12 @@ function EditorPageInner() {
     clearOutput,
     clearHistory,
   } = useCodeExecution(roomCode, effectiveUser, socket);
+
+  // Synchronized ref to always track the latest active language across effects and socket handlers
+  const languageRef = useRef(language);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   // 5. Initialize Agora RTC Audio Hook (<100ms ultra-low latency voice)
   const audio = useAudio({
@@ -413,8 +439,10 @@ function EditorPageInner() {
         if (isMounted && res.success && res.room) {
           setRoomInfo(res.room);
           if (res.room.language) {
-            const cleanLang = res.room.language.toLowerCase();
-            setLanguage(cleanLang);
+            const cleanLang = res.room.language.toLowerCase().trim();
+            if (cleanLang && cleanLang !== languageRef.current) {
+              setLanguage(cleanLang);
+            }
 
             // If the document is currently empty or has default starter snippet, ensure correct room boilerplate
             if (yjs?.yText && yjs?.doc) {
@@ -501,7 +529,12 @@ function EditorPageInner() {
     if (!socket) return;
 
     const handleRemoteLanguage = ({ language: newLang, changedBy }) => {
-      const cleanLang = (newLang || 'javascript').toLowerCase();
+      if (!newLang) return;
+      const cleanLang = newLang.toLowerCase().trim();
+
+      // Guard against duplicate / echo updates to eliminate flickering and loops
+      if (cleanLang === languageRef.current) return;
+
       setLanguage(cleanLang);
       showToast(`${changedBy || 'A peer'} switched language to ${cleanLang.toUpperCase()}`);
     };
@@ -511,7 +544,7 @@ function EditorPageInner() {
     return () => {
       socket.off('language-changed', handleRemoteLanguage);
     };
-  }, [socket, setLanguage]);
+  }, [socket, setLanguage, showToast]);
 
   // Real-time synchronization of Gemini AI Assistant chat across all room collaborators
   useEffect(() => {
@@ -656,14 +689,12 @@ function EditorPageInner() {
     }
   }, [roomCode, roomInfo?.title, language, members?.length, user?.id]);
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 2500);
-  };
-
   // Language switch handler (updates state, broadcasts to peers, swaps boilerplate if code is default)
   const handleLanguageChange = (newLanguage) => {
-    const cleanLang = (newLanguage || 'javascript').toLowerCase().trim();
+    if (!newLanguage) return;
+    const cleanLang = newLanguage.toLowerCase().trim();
+    if (cleanLang === languageRef.current) return;
+
     setLanguage(cleanLang);
 
     // If editor text is currently empty or matches a default starter snippet of any language,
@@ -685,11 +716,11 @@ function EditorPageInner() {
       socket.emit('language-change', {
         roomCode,
         language: cleanLang,
-        userName: currentUserName,
+        userName: effectiveUser?.name || userName || 'You',
       });
     }
 
-    showToast(`Switched language to ${newLanguage}`);
+    showToast(`Switched language to ${cleanLang.toUpperCase()}`);
   };
 
   // Code Execution Handler (runs code via backend Judge0 API, broadcasts output to peers)
