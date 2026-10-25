@@ -17,7 +17,7 @@ export function useMonacoBinding(editor, yText, awareness) {
   const [isBound, setIsBound] = useState(false);
 
   useEffect(() => {
-    if (!editor || !yText) {
+    if (!editor || !yText || !yText.doc) {
       setIsBound(false);
       return;
     }
@@ -35,11 +35,12 @@ export function useMonacoBinding(editor, yText, awareness) {
     }
 
     try {
+      const validAwareness = awareness && awareness.doc ? awareness : null;
       const binding = new MonacoBinding(
         yText,
         model,
         new Set([editor]),
-        awareness || null
+        validAwareness
       );
       bindingRef.current = binding;
       setIsBound(true);

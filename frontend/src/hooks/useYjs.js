@@ -201,18 +201,14 @@ export function useYjs(roomCode, user = null) {
       provider.destroy();
       providerRef.current = null;
       setYAwareness(null);
-
-      if (docRef.current) {
-        docRef.current.destroy();
-        docRef.current = null;
-        yTextRef.current = null;
-      }
     };
   }, [roomCode, wsUrl]);
 
   // 2. Dynamically update awareness when user info or color changes without reconnecting provider
   useEffect(() => {
-    if (providerRef.current && providerRef.current.awareness && docRef.current) {
+    if (providerRef.current?.awareness && docRef.current) {
+      const currentDoc = docRef.current;
+      const cId = currentDoc?.clientID || providerRef.current.awareness.clientID;
       const shouldUseInitials = Boolean(user?.use_initials || user?.user_metadata?.use_initials);
       const userAvatar = shouldUseInitials
         ? null
@@ -221,8 +217,8 @@ export function useYjs(roomCode, user = null) {
         name: userName,
         color: assignedColor.hex,
         colorLight: assignedColor.bg,
-        id: user?.id || `client-${docRef.current.clientID}`,
-        clientID: docRef.current.clientID,
+        id: user?.id || (cId ? `client-${cId}` : 'client-anon'),
+        clientID: cId,
         avatar: userAvatar,
       });
     }
