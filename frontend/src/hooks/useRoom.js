@@ -34,6 +34,12 @@ export function useRoom(autoFetch = false) {
 
       if (res.success) {
         const fetchedRooms = res.rooms || [];
+        try {
+          const stored = JSON.parse(localStorage.getItem('codeo_created_rooms') || '[]');
+          const fetchedCodes = fetchedRooms.map((r) => String(r.code).toUpperCase().trim()).filter(Boolean);
+          const updated = Array.from(new Set([...stored, ...fetchedCodes]));
+          localStorage.setItem('codeo_created_rooms', JSON.stringify(updated));
+        } catch {}
         setRooms(fetchedRooms);
         setCount(res.count ?? fetchedRooms.length);
         setLimit(res.limit ?? 10);
@@ -78,9 +84,17 @@ export function useRoom(autoFetch = false) {
       });
 
       if (res.success && res.room) {
+        const roomCode = res.code || res.room.code;
+        if (roomCode) {
+          try {
+            const stored = JSON.parse(localStorage.getItem('codeo_created_rooms') || '[]');
+            const updated = Array.from(new Set([...stored, String(roomCode).toUpperCase().trim()]));
+            localStorage.setItem('codeo_created_rooms', JSON.stringify(updated));
+          } catch {}
+        }
         // Refresh room list
         await getUserRooms();
-        return { success: true, room: res.room, code: res.code || res.room.code };
+        return { success: true, room: res.room, code: roomCode };
       } else {
         throw new Error(res.error || 'Failed to create room.');
       }

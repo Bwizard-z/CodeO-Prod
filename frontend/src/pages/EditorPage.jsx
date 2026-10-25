@@ -199,30 +199,65 @@ function EditorPageInner() {
     };
   }, []);
 
-  // 1. Initialize Yjs Real-Time Synchronization Hook
-  const yjs = useYjs(roomCode, effectiveUser);
-
-  // 2. Initialize Socket.io Event Hook
-  const { socket, isConnected, isReconnecting, members, emitEvent } = useSocket(roomCode, effectiveUser);
-
-  // Determine host permissions with authoritative ID / email criteria (no name matching)
+  // Determine host permissions with authoritative criteria (localStorage creation history, creator ID, email, room members)
   const isHost = useMemo(() => {
-    if (!roomInfo) return false;
-    const roomCreatedBy = String(roomInfo.created_by || roomInfo.host?.id || '').trim();
-    const myId = String(user?.id || effectiveUser?.id || '').trim();
-    if (myId && roomCreatedBy && myId === roomCreatedBy) return true;
+    // 1. Check local storage for rooms created in this browser session
+    try {
+      const createdRooms = JSON.parse(localStorage.getItem('codeo_created_rooms') || '[]');
+      if (Array.isArray(createdRooms) && roomCode && createdRooms.includes(String(roomCode).toUpperCase().trim())) {
+        return true;
+      }
+    } catch {}
 
-    const myEmail = (user?.email || '').trim().toLowerCase();
-    const hostEmail = (roomInfo.creator_email || roomInfo.host?.email || '').trim().toLowerCase();
-    if (myEmail && hostEmail && myEmail === hostEmail) return true;
+    const myId = String(user?.id || '').trim().toLowerCase();
+    const myEffectiveId = String(effectiveUser?.id || '').trim().toLowerCase();
+    const myEmail = (user?.email || effectiveUser?.email || '').trim().toLowerCase();
 
-    if (Array.isArray(members) && myId) {
-      const myMember = members.find((m) => String(m.id) === myId || String(m.userId) === myId);
+    if (roomInfo) {
+      const roomCreatedBy = String(roomInfo.created_by || roomInfo.host?.id || '').trim().toLowerCase();
+      if (roomCreatedBy && (myId === roomCreatedBy || myEffectiveId === roomCreatedBy)) {
+        return true;
+      }
+
+      const hostEmail = (roomInfo.creator_email || roomInfo.host?.email || '').trim().toLowerCase();
+      if (myEmail && hostEmail && myEmail === hostEmail) return true;
+
+      // Check if current user is host in roomInfo.members
+      if (Array.isArray(roomInfo.members)) {
+        const matchInRoom = roomInfo.members.find(
+          (m) =>
+            (myId && String(m.user_id || m.userId).toLowerCase() === myId) ||
+            (myEffectiveId && String(m.user_id || m.userId).toLowerCase() === myEffectiveId) ||
+            (myEmail && m.email && m.email.toLowerCase() === myEmail)
+        );
+        if (matchInRoom?.role === 'host') return true;
+      }
+    }
+
+    // Check if current user has host role in socket members
+    if (Array.isArray(members)) {
+      const myMember = members.find(
+        (m) =>
+          (myId && String(m.id || m.userId).toLowerCase() === myId) ||
+          (myEffectiveId && String(m.id || m.userId).toLowerCase() === myEffectiveId)
+      );
       if (myMember?.role === 'host') return true;
     }
 
     return false;
-  }, [user, roomInfo, effectiveUser, members]);
+  }, [user, roomInfo, effectiveUser, members, roomCode]);
+
+  // Inject host role into effectiveUser so Socket.io and awareness broadcast correctly
+  const effectiveUserWithRole = useMemo(() => ({
+    ...effectiveUser,
+    role: isHost ? 'host' : (effectiveUser?.role || 'member'),
+  }), [effectiveUser, isHost]);
+
+  // 1. Initialize Yjs Real-Time Synchronization Hook
+  const yjs = useYjs(roomCode, effectiveUserWithRole);
+
+  // 2. Initialize Socket.io Event Hook
+  const { socket, isConnected, isReconnecting, members, emitEvent } = useSocket(roomCode, effectiveUserWithRole);
 
   // 3. Initialize Host Controls & Moderation Hook
   const roomControl = useRoomControl({
@@ -454,6 +489,18 @@ function EditorPageInner() {
 
         if (isMounted && res.success && res.room) {
           setRoomInfo(res.room);
+
+          // If current user is the creator of this room, cache in localStorage
+          const myId = String(user?.id || effectiveUser?.id || '').trim().toLowerCase();
+          const creatorId = String(res.room.created_by || res.room.host?.id || '').trim().toLowerCase();
+          if (myId && creatorId && myId === creatorId && res.room.code) {
+            try {
+              const stored = JSON.parse(localStorage.getItem('codeo_created_rooms') || '[]');
+              const updated = Array.from(new Set([...stored, String(res.room.code).toUpperCase().trim()]));
+              localStorage.setItem('codeo_created_rooms', JSON.stringify(updated));
+            } catch {}
+          }
+
           if (res.room.language) {
             const cleanLang = res.room.language.toLowerCase().trim();
             if (cleanLang && cleanLang !== languageRef.current) {

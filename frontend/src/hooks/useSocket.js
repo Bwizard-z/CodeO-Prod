@@ -143,6 +143,21 @@ export function useSocket(roomCode, user = null) {
     };
   }, [roomCode, user?.id, user?.name]);
 
+  // Synchronize dynamic role changes (e.g. host status determined post-mount)
+  const userRole = user?.role;
+  useEffect(() => {
+    if (socketRef.current?.connected && roomCode && userRole) {
+      socketRef.current.emit('user-update', {
+        roomCode: roomCode.toUpperCase().trim(),
+        user: {
+          id: user?.id,
+          role: userRole,
+          name: user?.name,
+        },
+      });
+    }
+  }, [userRole, roomCode, user?.id, user?.name]);
+
   const emitEvent = useCallback(
     (eventName, payload) => {
       if (socketRef.current && isConnected) {

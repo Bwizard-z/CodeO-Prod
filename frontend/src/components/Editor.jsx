@@ -637,9 +637,14 @@ export function Editor({
             wordWrap: 'on',
             padding: { top: 16, bottom: 8 },
             find: {
-              addExtraSpaceOnTop: true,
+              addExtraSpaceOnTop: false,
               autoFindInSelection: 'multiline',
               seedSearchStringFromSelection: 'selection',
+            },
+            hover: {
+              enabled: true,
+              delay: 300,
+              sticky: false,
             },
           }}
         />

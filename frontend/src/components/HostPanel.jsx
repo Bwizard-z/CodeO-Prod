@@ -209,24 +209,24 @@ export function HostPanel({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        title="Host Moderation Controls"
-        className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border text-xs font-sans font-medium transition-all cursor-pointer shadow-sm shrink-0 ${
+        title="Host Moderation Controls & Room Lock"
+        className={`flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-lg border text-xs font-sans font-semibold transition-all cursor-pointer shadow-sm shrink-0 ${
           isOpen
-            ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+            ? 'bg-amber-500/25 border-amber-500/50 text-amber-300 ring-1 ring-amber-500/40'
             : isLocked
-            ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
-            : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700'
+            ? 'bg-amber-500/20 border-amber-500/45 text-amber-300 hover:bg-amber-500/30'
+            : 'bg-amber-500/15 border-amber-500/35 text-amber-300 hover:bg-amber-500/25 hover:border-amber-500/50'
         }`}
       >
-        <FontAwesomeIcon icon={faShieldHalved} className="text-amber-400 text-xs" />
-        <span className="hidden sm:inline lg:hidden">Host</span>
-        <span className="hidden lg:inline">Host Controls</span>
+        <FontAwesomeIcon icon={faShieldHalved} className="text-amber-400 text-xs shrink-0" />
+        <span className="hidden sm:inline">Host Controls</span>
+        <span className="sm:hidden inline">Host</span>
         {isLocked && (
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title="Room is Locked" />
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" title="Room is Locked" />
         )}
         <FontAwesomeIcon
           icon={faChevronDown}
-          className={`text-[10px] text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`text-[10px] text-amber-400/80 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 

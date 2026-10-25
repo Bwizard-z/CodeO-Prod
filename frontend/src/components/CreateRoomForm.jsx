@@ -61,6 +61,11 @@ export function CreateRoomForm({
     });
 
     if (result.success && result.code) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('codeo_created_rooms') || '[]');
+        const updated = Array.from(new Set([...stored, String(result.code).toUpperCase().trim()]));
+        localStorage.setItem('codeo_created_rooms', JSON.stringify(updated));
+      } catch {}
       if (onSuccess) {
         onSuccess(result.room);
       }

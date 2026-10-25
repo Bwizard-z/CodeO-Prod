@@ -125,6 +125,18 @@ function initSocket(server, allowedOrigins = []) {
       });
     });
 
+    // 1b. User Role / Profile Metadata Update (e.g. host role discovered)
+    socket.on('user-update', ({ roomCode, user: updatedUser }) => {
+      const cleanCode = (roomCode || currentRoomCode)?.toUpperCase()?.trim();
+      if (!cleanCode || !currentUser) return;
+      if (updatedUser?.role) currentUser.role = updatedUser.role;
+      if (updatedUser?.name) currentUser.name = updatedUser.name;
+      if (roomMembers.has(cleanCode)) {
+        roomMembers.get(cleanCode).set(socket.id, currentUser);
+        io.to(`room-${cleanCode}`).emit('room-users', Array.from(roomMembers.get(cleanCode).values()));
+      }
+    });
+
     // 2. Language Change Sync
     socket.on('language-change', async ({ roomCode, language }) => {
       if (!roomCode || !language) return;
