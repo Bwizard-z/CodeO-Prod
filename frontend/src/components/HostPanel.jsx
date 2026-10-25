@@ -22,6 +22,8 @@ export function HostPanel({
   isHost = false,
   roomId = null,
   roomCode = null,
+  roomTitle = '',
+  onRenameRoom = null,
   roomControl = null,
   members = [],
   currentUserId = null,
@@ -241,7 +243,24 @@ export function HostPanel({
               </div>
               <div>
                 <h3 className="text-xs font-bold text-white tracking-wide uppercase">Host Controls</h3>
-                <p className="text-[10.5px] text-neutral-400">Room: {roomCode || roomId}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <p className="text-[10.5px] text-neutral-400 truncate max-w-[150px] sm:max-w-[200px]" title={roomTitle || roomCode || roomId}>
+                    {roomTitle || `Room ${roomCode || roomId}`}
+                  </p>
+                  {onRenameRoom && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        onRenameRoom();
+                      }}
+                      title="Rename room"
+                      className="text-[#fbff47] hover:underline text-[10.5px] font-medium cursor-pointer"
+                    >
+                      Rename
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             <button

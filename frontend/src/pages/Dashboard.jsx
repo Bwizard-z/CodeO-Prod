@@ -33,6 +33,7 @@ export const Dashboard = () => {
     error: roomsError,
     getUserRooms,
     deleteRoom,
+    updateRoom,
   } = useRoom(true);
 
   // Search & Sorting state
@@ -80,6 +81,17 @@ export const Dashboard = () => {
       await getUserRooms();
     } else {
       showToast(result.error || 'Failed to delete room.');
+    }
+  };
+
+  // Handle Rename action from RoomCard
+  const handleRename = async (idOrCode, newTitle) => {
+    const result = await updateRoom(idOrCode, { title: newTitle });
+    if (result.success) {
+      showToast(`Room renamed to "${newTitle}".`);
+      await getUserRooms();
+    } else {
+      showToast(result.error || 'Failed to rename room.');
     }
   };
 
@@ -253,6 +265,7 @@ export const Dashboard = () => {
                 key={room.id || room.code}
                 room={room}
                 onDelete={handleDelete}
+                onRename={handleRename}
                 onCopySuccess={(code) => showToast(`Room code ${code} copied to clipboard!`)}
               />
             ))}

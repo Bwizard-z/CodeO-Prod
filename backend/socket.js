@@ -436,6 +436,30 @@ function initSocket(server, allowedOrigins = []) {
       });
     });
 
+    // 12b. Host Moderation: Rename Room
+    socket.on('host-rename-room', async ({ roomCode, title }) => {
+      const code = (roomCode || currentRoomCode)?.toUpperCase()?.trim();
+      const cleanTitle = (title || '').trim();
+      if (!code || !cleanTitle) return;
+      const isHost = await checkIsHost(code, currentUser);
+      if (!isHost) {
+        return socket.emit('error', { message: 'Only the room host can rename the room.' });
+      }
+
+      try {
+        await supabaseAdmin.from('rooms').update({ title: cleanTitle, updated_at: new Date().toISOString() }).eq('code', code);
+      } catch (e) {
+        console.warn('[Socket] Rename room DB error:', e.message);
+      }
+
+      io.to(`room-${code}`).emit('room-renamed', {
+        roomCode: code,
+        title: cleanTitle,
+        renamedBy: currentUser?.name || 'Host',
+        renamedById: currentUser?.id,
+      });
+    });
+
     // 13. Host Moderation: Lock Room
     socket.on('host-lock-room', async ({ roomCode }) => {
       const code = (roomCode || currentRoomCode)?.toUpperCase()?.trim();

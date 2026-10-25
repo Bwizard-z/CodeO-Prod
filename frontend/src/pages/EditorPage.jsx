@@ -15,6 +15,8 @@ import {
   faCheck,
   faLink,
   faSpinner,
+  faPenToSquare,
+  faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../hooks/useAuth';
 import { useYjs } from '../hooks/useYjs';
@@ -120,6 +122,11 @@ function EditorPageInner() {
   const [roomInfo, setRoomInfo] = useState(null);
   const [roomLoading, setRoomLoading] = useState(true);
   const [roomError, setRoomError] = useState(null);
+
+  // Room rename state (host capability)
+  const [isEditingRoomName, setIsEditingRoomName] = useState(false);
+  const [editingRoomName, setEditingRoomName] = useState('');
+  const [isRenamingRoom, setIsRenamingRoom] = useState(false);
 
   // Leave / Exit room confirmation modal state
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -617,6 +624,21 @@ function EditorPageInner() {
     };
   }, [socket, setLanguage, showToast]);
 
+  // Listen for room rename broadcast from host
+  useEffect(() => {
+    if (!socket) return;
+    const handleRoomRenamed = ({ title, renamedBy }) => {
+      if (!title) return;
+      setRoomInfo((prev) => (prev ? { ...prev, title } : { title }));
+      showToast(`${renamedBy || 'Host'} renamed room to "${title}"`);
+    };
+
+    socket.on('room-renamed', handleRoomRenamed);
+    return () => {
+      socket.off('room-renamed', handleRoomRenamed);
+    };
+  }, [socket, showToast]);
+
   // Real-time synchronization of Gemini AI Assistant chat across all room collaborators
   useEffect(() => {
     if (!socket) return;
@@ -918,6 +940,49 @@ function EditorPageInner() {
     navigate('/dashboard');
   }, [audio, socket, roomCode, navigate]);
 
+  // Host rename room handler
+  const handleSaveRoomName = useCallback(
+    async (e) => {
+      if (e) e.preventDefault();
+      const cleanTitle = (editingRoomName || '').trim();
+      if (!cleanTitle || cleanTitle === roomInfo?.title) {
+        setIsEditingRoomName(false);
+        return;
+      }
+      setIsRenamingRoom(true);
+      try {
+        const res = await api.updateRoom(roomInfo?.id || roomCode, { title: cleanTitle });
+        if (res.success) {
+          setRoomInfo((prev) => (prev ? { ...prev, title: cleanTitle } : prev));
+          showToast(`Room renamed to "${cleanTitle}"`);
+          setIsEditingRoomName(false);
+
+          if (socket && roomCode) {
+            socket.emit('host-rename-room', {
+              roomCode,
+              title: cleanTitle,
+            });
+          }
+
+          try {
+            const recent = JSON.parse(localStorage.getItem('codeo_recent_rooms') || '[]');
+            const updated = recent.map((r) =>
+              r.code && r.code.toUpperCase() === roomCode.toUpperCase() ? { ...r, title: cleanTitle } : r
+            );
+            localStorage.setItem('codeo_recent_rooms', JSON.stringify(updated));
+          } catch {}
+        } else {
+          showToast(res.error || 'Failed to rename room.');
+        }
+      } catch (err) {
+        showToast(err.response?.data?.error || err.message || 'Failed to rename room.');
+      } finally {
+        setIsRenamingRoom(false);
+      }
+    },
+    [editingRoomName, roomInfo?.id, roomInfo?.title, roomCode, socket, showToast]
+  );
+
   // Resizable panel handlers (Sidebar, AI Panel, and slide-able Terminal)
   const handleStartResize = (type, e) => {
     e.preventDefault();
@@ -1039,13 +1104,66 @@ function EditorPageInner() {
             <span className="text-[11px] font-semibold">{activeCollaboratorsCount}</span>
           </button>
 
-          {/* Room Title - matched in size, padding, and height with Room ID box */}
-          <div
-            className="hidden xl:flex items-center bg-[#0e1424] border border-white/15 text-white px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-sans font-semibold text-[11px] sm:text-xs shadow-inner shrink-0 max-w-[180px] h-[28px] sm:h-[30px]"
-            title={roomInfo?.title || `Room ${roomCode}`}
-          >
-            <span className="truncate">{roomLoading ? 'Loading...' : roomInfo?.title || `Room ${roomCode}`}</span>
-          </div>
+          {/* Room Title - matched in size, padding, and height with Room ID box, editable by host */}
+          {isEditingRoomName && isHost ? (
+            <form
+              onSubmit={handleSaveRoomName}
+              className="flex items-center bg-[#0e1424] border border-[#fbff47]/60 text-white px-2 py-0.5 rounded-lg text-xs shadow-inner shrink-0 h-[28px] sm:h-[30px] gap-1"
+            >
+              <input
+                type="text"
+                value={editingRoomName}
+                onChange={(e) => setEditingRoomName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setIsEditingRoomName(false);
+                }}
+                maxLength={255}
+                autoFocus
+                disabled={isRenamingRoom}
+                className="bg-transparent text-white font-sans text-xs px-1 py-0 outline-none w-28 sm:w-36 focus:ring-0"
+                placeholder="Room name..."
+              />
+              <button
+                type="submit"
+                disabled={isRenamingRoom || !editingRoomName.trim()}
+                title="Save Room Name"
+                className="text-emerald-400 hover:text-emerald-300 p-0.5 cursor-pointer disabled:opacity-40"
+              >
+                <FontAwesomeIcon icon={isRenamingRoom ? faSpinner : faCheck} className={isRenamingRoom ? 'animate-spin text-[10px]' : 'text-[10px]'} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditingRoomName(false)}
+                title="Cancel"
+                className="text-neutral-400 hover:text-white p-0.5 cursor-pointer"
+              >
+                <FontAwesomeIcon icon={faXmark} className="text-[10px]" />
+              </button>
+            </form>
+          ) : (
+            <div
+              className={`hidden xl:flex items-center bg-[#0e1424] border border-white/15 text-white px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-sans font-semibold text-[11px] sm:text-xs shadow-inner shrink-0 max-w-[200px] h-[28px] sm:h-[30px] ${
+                isHost ? 'cursor-pointer hover:border-[#fbff47]/50 group transition-colors' : ''
+              }`}
+              title={isHost ? 'Click to rename room' : (roomInfo?.title || `Room ${roomCode}`)}
+              onClick={
+                isHost
+                  ? () => {
+                      setEditingRoomName(roomInfo?.title || `Room ${roomCode}`);
+                      setIsEditingRoomName(true);
+                    }
+                  : undefined
+              }
+            >
+              <span className="truncate">{roomLoading ? 'Loading...' : roomInfo?.title || `Room ${roomCode}`}</span>
+              {isHost && (
+                <FontAwesomeIcon
+                  icon={faPenToSquare}
+                  className="ml-1.5 text-[10px] text-neutral-400 group-hover:text-[#fbff47] transition-colors shrink-0"
+                />
+              )}
+            </div>
+          )}
 
           {/* Room Code & Copy Buttons - always compact and consistent with Room Title */}
           <div className="flex items-center bg-[#0e1424] border border-white/15 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg font-mono text-[11px] sm:text-xs shadow-inner shrink-0 gap-1 sm:gap-1.5 h-[28px] sm:h-[30px]">
@@ -1104,6 +1222,11 @@ function EditorPageInner() {
               isHost={isHost}
               roomId={roomInfo?.id}
               roomCode={roomCode}
+              roomTitle={roomInfo?.title || `Room ${roomCode}`}
+              onRenameRoom={() => {
+                setEditingRoomName(roomInfo?.title || `Room ${roomCode}`);
+                setIsEditingRoomName(true);
+              }}
               roomControl={roomControl}
               members={members}
               currentUserId={effectiveUser?.id}

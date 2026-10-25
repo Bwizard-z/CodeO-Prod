@@ -194,6 +194,30 @@ export function useRoom(autoFetch = false) {
     }
   };
 
+  /**
+   * Update room metadata (e.g. title / name, description)
+   */
+  const updateRoom = async (idOrCode, updates) => {
+    try {
+      setActionLoading(true);
+      setError(null);
+
+      const res = await api.updateRoom(idOrCode, updates);
+      if (res.success && res.room) {
+        await getUserRooms();
+        return { success: true, room: res.room };
+      } else {
+        throw new Error(res.error || 'Failed to update room.');
+      }
+    } catch (err) {
+      const msg = extractError(err, 'Failed to update room.');
+      setError(msg);
+      return { success: false, error: msg };
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return {
     rooms,
     count,
@@ -207,6 +231,7 @@ export function useRoom(autoFetch = false) {
     joinRoom,
     leaveRoom,
     deleteRoom,
+    updateRoom,
     refreshRooms: getUserRooms,
   };
 }
