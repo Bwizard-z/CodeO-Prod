@@ -68,6 +68,61 @@ export function Editor({
     }
   }, [editorInstance, isEffectiveReadOnly]);
 
+  // Permanently suppress and disable hover tooltips on Find Widget buttons (including Close button)
+  // to completely eliminate mouseover/mouseleave tooltip flicker loops
+  useEffect(() => {
+    const suppressFindHover = (e) => {
+      const target = e.target;
+      if (
+        target &&
+        (target.closest?.('.find-widget .button') ||
+         target.closest?.('.find-widget .close-button') ||
+         target.closest?.('.find-widget') ||
+         target.classList?.contains('close-button'))
+      ) {
+        e.stopImmediatePropagation();
+      }
+    };
+
+    document.addEventListener('mouseenter', suppressFindHover, true);
+    document.addEventListener('mouseover', suppressFindHover, true);
+    document.addEventListener('pointerenter', suppressFindHover, true);
+    document.addEventListener('pointerover', suppressFindHover, true);
+
+    // MutationObserver to immediately remove any tooltip container that attempts to render
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === 1) {
+            const classStr = String(node.className || '');
+            if (
+              classStr.includes('monaco-hover') ||
+              classStr.includes('workbench-hover') ||
+              classStr.includes('codicon-hover')
+            ) {
+              const text = node.textContent || '';
+              if (text.includes('Close') || text.includes('Escape') || text.includes('Find')) {
+                node.style.display = 'none';
+                node.style.visibility = 'hidden';
+                node.remove();
+              }
+            }
+          }
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      document.removeEventListener('mouseenter', suppressFindHover, true);
+      document.removeEventListener('mouseover', suppressFindHover, true);
+      document.removeEventListener('pointerenter', suppressFindHover, true);
+      document.removeEventListener('pointerover', suppressFindHover, true);
+      observer.disconnect();
+    };
+  }, []);
+
   const [currentLine, setCurrentLine] = useState(1);
   const [currentCol, setCurrentCol] = useState(1);
   const [showMinimap, setShowMinimap] = useState(false);
@@ -642,9 +697,7 @@ export function Editor({
               seedSearchStringFromSelection: 'selection',
             },
             hover: {
-              enabled: true,
-              delay: 300,
-              sticky: false,
+              enabled: false,
             },
           }}
         />

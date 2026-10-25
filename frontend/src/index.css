@@ -151,10 +151,20 @@ html[data-ui-scale="large"] {
   border-radius: 6px !important;
 }
 
-/* Fix: Prevent Monaco hover tooltips (e.g. 'Close (Escape)', parameter hints)
-   from capturing mouse pointer events. If pointer-events is auto, hovering the button
-   immediately activates the tooltip directly under the mouse, firing mouseleave on the button,
-   which closes the tooltip, firing mouseenter on the button, causing a rapid infinite flickering strobe loop. */
+/* Completely disable and hide tooltips on the Find Widget buttons (including Close button)
+   to permanently eliminate mouseover/mouseleave tooltip flicker loops */
+.monaco-editor .workbench-hover-container,
+.workbench-hover-container,
+.monaco-editor .find-widget .workbench-hover-container,
+.monaco-editor .find-widget .monaco-hover,
+.monaco-editor .codicon-hover,
+.monaco-hover[data-origin="find-widget"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .monaco-hover,
 .monaco-hover-content,
 .monaco-editor .monaco-hover,
