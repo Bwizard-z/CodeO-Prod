@@ -199,6 +199,12 @@ function EditorPageInner() {
     };
   }, []);
 
+  // 1. Initialize Yjs Real-Time Synchronization Hook
+  const yjs = useYjs(roomCode, effectiveUser);
+
+  // 2. Initialize Socket.io Event Hook
+  const { socket, isConnected, isReconnecting, members, emitEvent } = useSocket(roomCode, effectiveUser);
+
   // Determine host permissions with authoritative criteria (localStorage creation history, creator ID, email, room members)
   const isHost = useMemo(() => {
     // 1. Check local storage for rooms created in this browser session
@@ -247,17 +253,19 @@ function EditorPageInner() {
     return false;
   }, [user, roomInfo, effectiveUser, members, roomCode]);
 
-  // Inject host role into effectiveUser so Socket.io and awareness broadcast correctly
-  const effectiveUserWithRole = useMemo(() => ({
-    ...effectiveUser,
-    role: isHost ? 'host' : (effectiveUser?.role || 'member'),
-  }), [effectiveUser, isHost]);
-
-  // 1. Initialize Yjs Real-Time Synchronization Hook
-  const yjs = useYjs(roomCode, effectiveUserWithRole);
-
-  // 2. Initialize Socket.io Event Hook
-  const { socket, isConnected, isReconnecting, members, emitEvent } = useSocket(roomCode, effectiveUserWithRole);
+  // Synchronize host role to connected socket when isHost is confirmed
+  useEffect(() => {
+    if (socket && isConnected && roomCode && isHost) {
+      socket.emit('user-update', {
+        roomCode: roomCode.toUpperCase().trim(),
+        user: {
+          id: effectiveUser?.id,
+          role: 'host',
+          name: effectiveUser?.name,
+        },
+      });
+    }
+  }, [socket, isConnected, roomCode, isHost, effectiveUser?.id, effectiveUser?.name]);
 
   // 3. Initialize Host Controls & Moderation Hook
   const roomControl = useRoomControl({
