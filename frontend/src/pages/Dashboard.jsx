@@ -1,5 +1,5 @@
 // pages/Dashboard.jsx - Collaborative Room Management Dashboard
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -41,8 +41,29 @@ export const Dashboard = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
 
-  // Toast feedback state
+  // Toast feedback state with timeout cleanup
   const [toastMsg, setToastMsg] = useState('');
+  const toastTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const showToast = useCallback((msg) => {
+    if (!msg) return;
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToastMsg(msg);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMsg('');
+      toastTimeoutRef.current = null;
+    }, 2500);
+  }, []);
 
   // Fetch rooms on mount or user change
   useEffect(() => {
@@ -50,11 +71,6 @@ export const Dashboard = () => {
       getUserRooms();
     }
   }, [user, getUserRooms]);
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 2500);
-  };
 
   // Handle Delete action from RoomCard
   const handleDelete = async (idOrCode) => {

@@ -45,9 +45,13 @@ export function useRoomControl({
         }
 
         // Check if current user has restrictions
-        if (currentUserId) {
+        if (currentUserId || currentUser?.anonymousSessionId) {
           const myRecord = (res.members || []).find(
-            (m) => String(m.userId) === String(currentUserId) || String(m.id) === String(currentUserId)
+            (m) =>
+              (m.userId && String(m.userId) === String(currentUserId)) ||
+              (m.id && String(m.id) === String(currentUserId)) ||
+              (m.anonymousSessionId && String(m.anonymousSessionId) === String(currentUserId)) ||
+              (currentUser?.anonymousSessionId && m.anonymousSessionId && String(m.anonymousSessionId) === String(currentUser.anonymousSessionId))
           );
           if (myRecord) {
             setCanEdit(myRecord.canEdit !== false);

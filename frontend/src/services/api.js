@@ -115,8 +115,8 @@ export const api = {
     const res = await apiClient.get(`/api/rooms/${code}`);
     return res.data;
   },
-  joinRoom: async (code) => {
-    const res = await apiClient.post(`/api/rooms/${code}/join`);
+  joinRoom: async (code, payload = {}) => {
+    const res = await apiClient.post(`/api/rooms/${code}/join`, payload);
     return res.data;
   },
   leaveRoom: async (id) => {

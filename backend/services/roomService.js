@@ -444,12 +444,12 @@ async function getRoomByCode(code) {
 }
 
 /**
- * Add an authenticated user as a member to a room by room code, invite token, or UUID
+ * Add an authenticated user or guest as a member to a room by room code, invite token, or UUID
  * Validates user is not already an active member/host
  */
-async function joinRoom(code, user) {
-  if (!user || !user.id) {
-    throw new AppError('Authentication required to join room.', 401, 'UNAUTHORIZED');
+async function joinRoom(code, user = null, anonymousData = null) {
+  if (!user?.id && !anonymousData?.anonymous_name && !anonymousData?.name) {
+    throw new AppError('Authentication or guest name is required to join room.', 401, 'UNAUTHORIZED');
   }
 
   if (!code) {
@@ -488,61 +488,121 @@ async function joinRoom(code, user) {
     throw new AppError('This room is currently locked and not accepting new members.', 403, 'ROOM_LOCKED');
   }
 
-  // Ensure user exists in public.users to satisfy room_members_user_id_fkey
-  await ensureUserInPublicTable(user.id, user);
+  if (user?.id) {
+    // Ensure user exists in public.users to satisfy room_members_user_id_fkey
+    await ensureUserInPublicTable(user.id, user);
 
-  // Validate user is not already active member or host
-  const { data: existingMember } = await supabaseAdmin
-    .from('room_members')
-    .select('*')
-    .eq('room_id', room.id)
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (existingMember) {
-    if (existingMember.is_active) {
-      throw new AppError('You are already a member of this room.', 400, 'ALREADY_MEMBER');
-    }
-    // If user previously left or was inactive, reactivate membership
-    const { error: updateErr } = await supabaseAdmin
+    // Validate user is not already active member or host
+    const { data: existingMember } = await supabaseAdmin
       .from('room_members')
-      .update({
-        is_active: true,
-        kicked_at: null,
-        joined_at: new Date().toISOString(),
-      })
-      .eq('id', existingMember.id);
+      .select('*')
+      .eq('room_id', room.id)
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-    if (updateErr) {
-      throw new AppError('Failed to rejoin room: ' + updateErr.message, 500, 'DB_ERROR');
+    if (existingMember) {
+      if (existingMember.is_active) {
+        throw new AppError('You are already a member of this room.', 400, 'ALREADY_MEMBER');
+      }
+      // If user previously left or was inactive, reactivate membership
+      const { error: updateErr } = await supabaseAdmin
+        .from('room_members')
+        .update({
+          is_active: true,
+          kicked_at: null,
+          joined_at: new Date().toISOString(),
+        })
+        .eq('id', existingMember.id);
+
+      if (updateErr) {
+        throw new AppError('Failed to rejoin room: ' + updateErr.message, 500, 'DB_ERROR');
+      }
+    } else {
+      // Add new member
+      const { error: insertErr } = await supabaseAdmin
+        .from('room_members')
+        .insert({
+          room_id: room.id,
+          user_id: user.id,
+          role: room.created_by === user.id ? 'host' : 'member',
+          can_edit: true,
+          is_active: true,
+        });
+
+      if (insertErr) {
+        throw new AppError('Failed to join room: ' + insertErr.message, 500, 'DB_ERROR');
+      }
     }
-  } else {
-    // Add new member
-    const { error: insertErr } = await supabaseAdmin
-      .from('room_members')
-      .insert({
+
+    // Log activity
+    try {
+      await supabaseAdmin.from('room_activity_log').insert({
         room_id: room.id,
         user_id: user.id,
-        role: room.created_by === user.id ? 'host' : 'member',
-        can_edit: true,
-        is_active: true,
+        user_name: user.profile?.name || user.email?.split('@')[0] || 'User',
+        action: 'user_joined',
       });
-
-    if (insertErr) {
-      throw new AppError('Failed to join room: ' + insertErr.message, 500, 'DB_ERROR');
+    } catch (logErr) {
+      console.warn('Activity log note:', logErr.message);
     }
-  }
+  } else {
+    // Anonymous guest user join
+    const rawName = anonymousData.anonymous_name || anonymousData.name || 'Collaborator';
+    const anonName = String(rawName).trim().slice(0, 50) || 'Collaborator';
+    let anonSessionId = anonymousData.anonymous_session_id || anonymousData.sessionId;
+    const isSessionUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(anonSessionId || '').trim());
+    if (!isSessionUuid) {
+      anonSessionId = require('crypto').randomUUID();
+    }
 
-  // Log activity
-  try {
-    await supabaseAdmin.from('room_activity_log').insert({
-      room_id: room.id,
-      user_id: user.id,
-      user_name: user.profile?.name || user.email?.split('@')[0] || 'User',
-      action: 'user_joined',
-    });
-  } catch (logErr) {
-    console.warn('Activity log note:', logErr.message);
+    const { data: existingAnon } = await supabaseAdmin
+      .from('room_members')
+      .select('*')
+      .eq('room_id', room.id)
+      .eq('anonymous_session_id', anonSessionId)
+      .maybeSingle();
+
+    if (existingAnon) {
+      if (!existingAnon.is_active) {
+        await supabaseAdmin
+          .from('room_members')
+          .update({
+            is_active: true,
+            kicked_at: null,
+            anonymous_name: anonName,
+            joined_at: new Date().toISOString(),
+          })
+          .eq('id', existingAnon.id);
+      }
+    } else {
+      const { error: insertErr } = await supabaseAdmin
+        .from('room_members')
+        .insert({
+          room_id: room.id,
+          user_id: null,
+          anonymous_name: anonName,
+          anonymous_session_id: anonSessionId,
+          role: 'member',
+          can_edit: true,
+          is_active: true,
+        });
+
+      if (insertErr) {
+        throw new AppError('Failed to join room as guest: ' + insertErr.message, 500, 'DB_ERROR');
+      }
+    }
+
+    // Log activity
+    try {
+      await supabaseAdmin.from('room_activity_log').insert({
+        room_id: room.id,
+        anonymous_session_id: anonSessionId,
+        user_name: anonName,
+        action: 'user_joined',
+      });
+    } catch (logErr) {
+      console.warn('Activity log note:', logErr.message);
+    }
   }
 
   return await getRoomByCode(room.code);

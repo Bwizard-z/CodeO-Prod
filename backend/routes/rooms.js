@@ -94,14 +94,19 @@ router.get(['/user/rooms', '/user', '/my/rooms', '/my-rooms', '/my', '/mine'], o
  * Action: Add to room_members as 'member'
  * Return: room object
  */
-router.post(['/:code/join', '/join'], verifyAuth, async (req, res, next) => {
+router.post(['/:code/join', '/join'], optionalAuth, async (req, res, next) => {
   try {
     const code = req.params.code || req.body.code || req.body.roomCode || req.body.invite_token;
     if (!code) {
       throw new AppError('Room code is required to join.', 400, 'CODE_REQUIRED');
     }
 
-    const room = await roomService.joinRoom(code, req.user);
+    const anonymousData = !req.user?.id ? {
+      anonymous_name: req.body.anonymous_name || req.body.name || req.body.userName,
+      anonymous_session_id: req.body.anonymous_session_id || req.body.sessionId,
+    } : null;
+
+    const room = await roomService.joinRoom(code, req.user, anonymousData);
 
     res.status(200).json({
       success: true,

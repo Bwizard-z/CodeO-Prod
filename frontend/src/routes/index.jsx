@@ -13,12 +13,23 @@ import ForgotPassword from '../pages/ForgotPassword';
 import ResetPassword from '../pages/ResetPassword';
 import Dashboard from '../pages/Dashboard';
 import CreateRoom from '../pages/CreateRoom';
-import EditorPage from '../pages/EditorPage';
 import AuthCallback from '../pages/AuthCallback';
 import Features from '../pages/Features';
 import Feedback from '../pages/Feedback';
 import HonestlyCodeo from '../pages/HonestlyCodeo';
 import JoinRoom from '../pages/JoinRoom';
+
+// Code-split EditorPage to isolate Monaco, Agora, and Yjs from initial entry chunk
+const EditorPage = React.lazy(() => import('../pages/EditorPage'));
+
+function EditorFallback() {
+  return (
+    <div className="min-h-screen bg-[#0e0e10] flex flex-col items-center justify-center gap-3 select-none text-neutral-400">
+      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <span className="text-xs font-mono tracking-widest text-neutral-400">LOADING WORKSPACE...</span>
+    </div>
+  );
+}
 
 // Catch-all 404 handler that directs logged-in users to dashboard and guests to landing
 function CatchAllRoute() {
@@ -102,8 +113,22 @@ export const AppRoutes = () => {
       />
 
       {/* Semi-Protected Routes (Allows both Authenticated and Anonymous Guests) */}
-      <Route path="/room/:code" element={<EditorPage />} />
-      <Route path="/editor/:code" element={<EditorPage />} />
+      <Route
+        path="/room/:code"
+        element={
+          <React.Suspense fallback={<EditorFallback />}>
+            <EditorPage />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="/editor/:code"
+        element={
+          <React.Suspense fallback={<EditorFallback />}>
+            <EditorPage />
+          </React.Suspense>
+        }
+      />
 
       {/* Catch-all route */}
       <Route path="*" element={<CatchAllRoute />} />

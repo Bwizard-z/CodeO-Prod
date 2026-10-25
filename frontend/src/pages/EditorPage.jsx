@@ -10,6 +10,7 @@ import {
   faRotateRight,
   faTriangleExclamation,
   faArrowLeft,
+  faRightFromBracket,
   faCopy,
   faCheck,
   faLink,
@@ -61,6 +62,24 @@ function EditorPageInner() {
     }
   }, [authLoading, user, isAuthenticated]);
 
+  // Persistent anonymous session UUID for guests
+  const anonSessionId = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    let id = localStorage.getItem('codeo_anon_session_id');
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || '').trim());
+    if (!id || !isUuid) {
+      id = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+      localStorage.setItem('codeo_anon_session_id', id);
+    }
+    return id;
+  }, []);
+
   // Collaborator identification
   const userName =
     user?.user_metadata?.user_name ||
@@ -78,35 +97,32 @@ function EditorPageInner() {
       };
     }
     return {
-      id: 'guest-' + (guestName ? guestName.toLowerCase().replace(/[^a-z0-9]/g, '') : 'anon'),
+      id: anonSessionId || ('guest-' + (guestName ? guestName.toLowerCase().replace(/[^a-z0-9]/g, '') : 'anon')),
+      anonymousSessionId: anonSessionId,
       name: userName,
       user_metadata: { user_name: userName },
     };
-  }, [user, guestName, userName]);
+  }, [user, guestName, userName, anonSessionId]);
+
+  // Ensure persistent guest registration in room_members on mount or refresh
+  useEffect(() => {
+    if (!authLoading && !user && guestName && roomCode && anonSessionId) {
+      api.joinRoom(roomCode, {
+        anonymous_name: guestName,
+        anonymous_session_id: anonSessionId,
+      }).catch((err) => {
+        console.warn('[EditorPage] Auto guest join note:', err.message);
+      });
+    }
+  }, [authLoading, user, guestName, roomCode, anonSessionId]);
 
   // Room metadata state
   const [roomInfo, setRoomInfo] = useState(null);
   const [roomLoading, setRoomLoading] = useState(true);
   const [roomError, setRoomError] = useState(null);
 
-  // Fetch room metadata
-  useEffect(() => {
-    if (!roomCode) return;
-    let isCurrent = true;
-    api.getRoomByCode(roomCode)
-      .then((data) => {
-        if (!isCurrent) return;
-        const room = data?.room || data;
-        setRoomInfo(room);
-        setRoomLoading(false);
-      })
-      .catch((err) => {
-        if (!isCurrent) return;
-        setRoomError(err?.message || 'Failed to load room');
-        setRoomLoading(false);
-      });
-    return () => { isCurrent = false; };
-  }, [roomCode]);
+  // Leave / Exit room confirmation modal state
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
 
   // Editor content state
   const editorInstanceRef = useRef(null);
@@ -788,13 +804,26 @@ function EditorPageInner() {
   };
 
   // Guest name submit
-  const handleGuestSubmit = (e) => {
+  const handleGuestSubmit = async (e) => {
     e.preventDefault();
     if (!nameInput.trim()) return;
     const clean = nameInput.trim();
     localStorage.setItem('codeo_guest_name', clean);
     setGuestName(clean);
     setShowGuestModal(false);
+    try {
+      if (roomCode) {
+        await api.joinRoom(roomCode, {
+          anonymous_name: clean,
+          anonymous_session_id: anonSessionId,
+        });
+        if (roomControl?.fetchMembers) {
+          roomControl.fetchMembers();
+        }
+      }
+    } catch (err) {
+      console.warn('[EditorPage] Guest join room note:', err.message);
+    }
   };
 
   // Copy helpers
@@ -811,6 +840,28 @@ function EditorPageInner() {
     showToast('Room link copied to clipboard!');
     setTimeout(() => setCopiedUrl(false), 2000);
   };
+
+  // Leave / Exit room confirmation handler
+  const handleConfirmLeave = useCallback(async () => {
+    setShowLeaveModal(false);
+    try {
+      if (audio?.leaveCall) {
+        await audio.leaveCall();
+      }
+    } catch (err) {
+      console.warn('[EditorPage] Error leaving audio:', err);
+    }
+
+    try {
+      if (socket && roomCode) {
+        socket.emit('leave-room', { roomCode });
+      }
+    } catch (err) {
+      console.warn('[EditorPage] Error emitting leave-room:', err);
+    }
+
+    navigate('/dashboard');
+  }, [audio, socket, roomCode, navigate]);
 
   // Resizable panel handlers (Sidebar, AI Panel, and slide-able Terminal)
   const handleStartResize = (type, e) => {
@@ -906,8 +957,19 @@ function EditorPageInner() {
 
       {/* Top Header Bar - single compact row with overflow-visible on desktop and no-scrollbar touch scrolling on mobile to prevent clipping */}
       <header className="w-full max-w-full bg-[#080c14] border-b border-white/10 px-1.5 sm:px-3 lg:px-4 py-1 sm:py-1.5 flex items-center justify-between gap-1 sm:gap-2 relative z-50 select-none shrink-0 min-h-[42px] sm:min-h-[46px] overflow-x-auto sm:overflow-x-visible no-scrollbar">
-        {/* Left: Brand Logo, Room Pills, and Mobile/Split-screen Drawer Toggles */}
+        {/* Left: Brand Logo, Exit Button, Room Pills, and Mobile/Split-screen Drawer Toggles */}
         <div className="flex items-center gap-1 sm:gap-2 min-w-0 shrink">
+          {/* Exit / Leave Room Button */}
+          <button
+            type="button"
+            onClick={() => setShowLeaveModal(true)}
+            title="Exit Room (Return to Dashboard)"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-white/5 hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/30 text-neutral-300 hover:text-rose-300 transition-all text-xs font-sans font-semibold cursor-pointer shrink-0"
+          >
+            <FontAwesomeIcon icon={faRightFromBracket} className="text-xs" />
+            <span className="hidden min-[480px]:inline">Exit</span>
+          </button>
+
           <Link to="/dashboard" className="hover:opacity-85 transition-opacity flex items-center shrink-0">
             <img src={codeoLogo} alt="CodeO" className="h-5 sm:h-7 w-auto object-contain brightness-105" />
           </Link>
@@ -1325,6 +1387,39 @@ function EditorPageInner() {
         </div>
       )}
 
+      {/* Leave / Exit Room Confirmation Modal */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans select-none">
+          <div className="w-full max-w-sm rounded-2xl bg-[#0c111d] border border-white/15 shadow-2xl p-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto text-xl">
+              <FontAwesomeIcon icon={faRightFromBracket} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Exit Room?</h3>
+              <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                You will leave room <span className="font-mono text-[#fbff47]">{roomCode}</span>. Any active audio call and live collaborative session will be closed.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLeaveModal(false)}
+                className="flex-1 py-2 px-3 rounded-lg bg-white/10 hover:bg-white/15 text-white font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmLeave}
+                className="flex-1 py-2 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition-colors shadow-md cursor-pointer"
+              >
+                Exit Room
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Kicked from room modal */}
       {roomControl.isKicked && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-fade-in font-sans select-none">
@@ -1341,7 +1436,7 @@ function EditorPageInner() {
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => navigate('/join')}
+                onClick={() => navigate('/dashboard')}
                 className="w-full py-2.5 px-4 rounded-lg bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-colors cursor-pointer shadow-md active:scale-95"
               >
                 Return to Dashboard

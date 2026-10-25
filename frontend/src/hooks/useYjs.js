@@ -201,6 +201,12 @@ export function useYjs(roomCode, user = null) {
       provider.destroy();
       providerRef.current = null;
       setYAwareness(null);
+
+      if (docRef.current) {
+        docRef.current.destroy();
+        docRef.current = null;
+        yTextRef.current = null;
+      }
     };
   }, [roomCode, wsUrl]);
 

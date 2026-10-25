@@ -71,7 +71,12 @@ async function persistRoomContent(roomCode, doc) {
 function getOrCreateRoom(roomCode) {
   const code = roomCode.toUpperCase().trim();
   if (rooms.has(code)) {
-    return rooms.get(code);
+    const existing = rooms.get(code);
+    if (existing.evictionTimeout) {
+      clearTimeout(existing.evictionTimeout);
+      existing.evictionTimeout = null;
+    }
+    return existing;
   }
 
   const doc = new Y.Doc();
@@ -83,6 +88,7 @@ function getOrCreateRoom(roomCode) {
     awareness: aw,
     conns,
     saveTimeout: null,
+    evictionTimeout: null,
   };
   rooms.set(code, roomData);
 
@@ -262,13 +268,29 @@ function setupYjsConnection(conn, req) {
       if (controlled && controlled.size > 0) {
         awareness.removeAwarenessStates(room.awareness, Array.from(controlled), null);
       }
-      // If all connections closed, flush persistence
+      // If all connections closed, flush persistence and schedule room doc destruction
       if (room.conns.size === 0) {
         if (room.saveTimeout) {
           clearTimeout(room.saveTimeout);
           room.saveTimeout = null;
         }
         persistRoomContent(roomCode, room.doc);
+
+        const cleanCode = roomCode.toUpperCase().trim();
+        if (room.evictionTimeout) {
+          clearTimeout(room.evictionTimeout);
+        }
+        room.evictionTimeout = setTimeout(() => {
+          if (room.conns.size === 0) {
+            try {
+              room.awareness.destroy();
+              room.doc.destroy();
+            } catch (destroyErr) {
+              console.warn(`[Yjs Server] Error destroying room ${cleanCode}:`, destroyErr.message);
+            }
+            rooms.delete(cleanCode);
+          }
+        }, 30000);
       }
     }
   });

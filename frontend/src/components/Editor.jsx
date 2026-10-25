@@ -12,6 +12,7 @@ import {
   faArrowsRotate,
   faWandMagicSparkles,
   faTerminal,
+  faMagnifyingGlass,
   faLock,
   faBan,
 } from '@fortawesome/free-solid-svg-icons';
@@ -98,7 +99,18 @@ export function Editor({
     });
   }, []);
 
-  // Global keyboard shortcut handler for Command Palette (F1 or Ctrl/Cmd + Shift + P)
+  // Find & Replace trigger action
+  const handleToggleFind = useCallback((isReplaceMode = false) => {
+    if (!editorInstance) return;
+    editorInstance.focus();
+    if (isReplaceMode && !isEffectiveReadOnly) {
+      editorInstance.getAction('editor.action.startFindReplaceAction')?.run();
+    } else {
+      editorInstance.getAction('actions.find')?.run();
+    }
+  }, [editorInstance, isEffectiveReadOnly]);
+
+  // Global keyboard shortcut handler for Command Palette (F1 or Ctrl/Cmd + Shift + P) and Find & Replace (Ctrl+F / Ctrl+H)
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       const isCmdPalette =
@@ -112,12 +124,43 @@ export function Editor({
           editorInstance.focus();
           editorInstance.trigger('keyboard', 'editor.action.quickCommand');
         }
+        return;
+      }
+
+      // Find shortcut: Ctrl+F or Cmd+F (without Shift)
+      const isFind = (e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'f' || e.key === 'F');
+      if (isFind) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (editorInstance) {
+          editorInstance.focus();
+          editorInstance.getAction('actions.find')?.run();
+        }
+        return;
+      }
+
+      // Replace shortcut: Ctrl+H (Windows/Linux) or Cmd+Alt+F / Cmd+H (Mac)
+      const isReplace =
+        ((e.ctrlKey || e.metaKey) && (e.key === 'h' || e.key === 'H')) ||
+        (e.metaKey && e.altKey && (e.key === 'f' || e.key === 'F'));
+      if (isReplace) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (editorInstance) {
+          editorInstance.focus();
+          if (isEffectiveReadOnly) {
+            editorInstance.getAction('actions.find')?.run();
+          } else {
+            editorInstance.getAction('editor.action.startFindReplaceAction')?.run();
+          }
+        }
+        return;
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown, true);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
-  }, [editorInstance]);
+  }, [editorInstance, isEffectiveReadOnly]);
 
   const { doc, yText, yAwareness, status, isSynced, connectedUsers } = yjsState || {};
 
@@ -213,6 +256,14 @@ export function Editor({
         'input.border': '#2d3748',
         'input.placeholderForeground': '#6b7280',
         'widget.shadow': '#00000099',
+        'editorWidget.background': '#0c111d',
+        'editorWidget.border': '#2d3748',
+        'editorWidget.foreground': '#f3f4f6',
+        'inputOption.activeBorder': '#fbff47',
+        'inputOption.activeBackground': '#fbff4720',
+        'inputOption.activeForeground': '#ffffff',
+        'editor.findMatchBackground': '#fbff4745',
+        'editor.findMatchHighlightBackground': '#fbff4725',
       },
     });
   };
@@ -301,24 +352,22 @@ export function Editor({
       },
     });
 
-    // Track local cursor position for awareness and status bar
-    editor.onDidChangeCursorPosition((e) => {
-      const { lineNumber, column } = e.position;
-      setCurrentLine(lineNumber);
-      setCurrentCol(column);
-
-      if (onCursorChange) {
-        onCursorChange({ line: lineNumber, column });
-      }
-
-      // Publish local cursor position to Yjs awareness
-      if (yAwareness) {
-        yAwareness.setLocalStateField('cursor', {
-          line: lineNumber,
-          column: column,
-          lineNumber: lineNumber,
-        });
-      }
+    editor.addAction({
+      id: 'codeo.findAndReplace',
+      label: 'Find and Replace',
+      keybindings: [
+        monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH,
+      ],
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 1.6,
+      run: (ed) => {
+        ed.focus();
+        if (isEffectiveReadOnly) {
+          ed.getAction('actions.find')?.run();
+        } else {
+          ed.getAction('editor.action.startFindReplaceAction')?.run();
+        }
+      },
     });
 
     // Track text selection for AI explanation
@@ -330,18 +379,6 @@ export function Editor({
         if (onSelectionChange) {
           onSelectionChange(text || '', e.selection);
         }
-      }
-    });
-
-    // Track typing activity
-    let typingTimer = null;
-    editor.onKeyDown(() => {
-      if (yAwareness) {
-        yAwareness.setLocalStateField('isTyping', true);
-        if (typingTimer) clearTimeout(typingTimer);
-        typingTimer = setTimeout(() => {
-          yAwareness?.setLocalStateField('isTyping', false);
-        }, 1000);
       }
     });
 
@@ -505,6 +542,17 @@ export function Editor({
             <span className="hidden lg:inline">Map</span>
           </button>
 
+          {/* Find & Replace button */}
+          <button
+            type="button"
+            onClick={() => handleToggleFind(false)}
+            title={isEffectiveReadOnly ? 'Find in Code (Ctrl+F)' : 'Find & Replace (Ctrl+F / Ctrl+H)'}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-[#fbff47] transition-colors text-[10px] font-sans cursor-pointer"
+          >
+            <FontAwesomeIcon icon={faMagnifyingGlass} className="text-[9px]" />
+            <span className="hidden sm:inline">Find</span>
+          </button>
+
           {/* Command Palette button */}
           <button
             type="button"
@@ -588,6 +636,11 @@ export function Editor({
             automaticLayout: true,
             wordWrap: 'on',
             padding: { top: 16, bottom: 8 },
+            find: {
+              addExtraSpaceOnTop: true,
+              autoFindInSelection: 'multiline',
+              seedSearchStringFromSelection: 'selection',
+            },
           }}
         />
       </div>

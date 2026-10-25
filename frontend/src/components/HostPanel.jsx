@@ -1,5 +1,5 @@
 // components/HostPanel.jsx - Comprehensive Host Moderation Panel
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCrown,
@@ -8,7 +8,6 @@ import {
   faMicrophone,
   faMicrophoneSlash,
   faPen,
-  faBan,
   faUserSlash,
   faXmark,
   faSpinner,
@@ -33,11 +32,29 @@ export function HostPanel({
   const [feedbackToast, setFeedbackToast] = useState(null);
   const [editOverrides, setEditOverrides] = useState({}); // { memberId: boolean } for instant UI
   const panelRef = useRef(null);
+  const toastTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const showToast = useCallback((message, type = 'success') => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setFeedbackToast({ message, type });
+    toastTimeoutRef.current = setTimeout(() => {
+      setFeedbackToast(null);
+      toastTimeoutRef.current = null;
+    }, 3500);
+  }, []);
 
   const {
     isLocked = false,
-    lockRoom = () => {},
-    unlockRoom = () => {},
     toggleLock = () => {},
     muteUser = () => {},
     unmuteUser = () => {},
@@ -141,11 +158,6 @@ export function HostPanel({
 
   // If user is not the host, do not render host controls
   if (!isHost) return null;
-
-  const showToast = (message, type = 'success') => {
-    setFeedbackToast({ message, type });
-    setTimeout(() => setFeedbackToast(null), 3500);
-  };
 
   const handleToggleLock = async () => {
     const success = await toggleLock();

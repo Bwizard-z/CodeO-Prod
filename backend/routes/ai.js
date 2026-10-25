@@ -73,6 +73,22 @@ router.post('/chat', optionalAuth, aiChatLimiter, async (req, res, next) => {
       });
     }
 
+    if (message.length > 4000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Message exceeds maximum allowed length of 4000 characters.',
+        isCodingRelated: false,
+      });
+    }
+
+    if (activeCode && typeof activeCode === 'string' && activeCode.length > 50000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Code context exceeds maximum allowed length of 50,000 characters.',
+        isCodingRelated: false,
+      });
+    }
+
     if (!language) {
       return res.status(400).json({
         success: false,

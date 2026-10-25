@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const roomService = require('../services/roomService');
-const { verifyAuth } = require('../middleware/verifyAuth');
+const { verifyAuth, optionalAuth } = require('../middleware/verifyAuth');
 const { supabaseAdmin } = require('../services/supabase');
 const { AppError } = require('../utils/errorHandler');
 const { getIo } = require('../socket');
@@ -56,6 +56,7 @@ async function findMemberInRoom(roomId, memberId) {
       room_id,
       user_id,
       anonymous_name,
+      anonymous_session_id,
       role,
       can_edit,
       is_muted,
@@ -65,7 +66,7 @@ async function findMemberInRoom(roomId, memberId) {
     .eq('room_id', roomId);
 
   if (isUuid) {
-    query = query.or(`id.eq.${memberId},user_id.eq.${memberId}`);
+    query = query.or(`id.eq.${memberId},user_id.eq.${memberId},anonymous_session_id.eq.${memberId}`);
   } else {
     query = query.or(`anonymous_name.eq.${memberId},anonymous_name.ilike.%${memberId}%`);
   }
@@ -112,7 +113,7 @@ async function logRoomActivity(roomId, hostUser, action, targetUserId = null, ta
  * GET /api/rooms/:id/members
  * Get room members list with role, can_edit, is_muted status
  */
-router.get('/:id/members', verifyAuth, async (req, res, next) => {
+router.get('/:id/members', optionalAuth, async (req, res, next) => {
   try {
     const room = await roomService.findRoomByIdOrCode(req.params.id);
     if (!room) {
@@ -126,6 +127,7 @@ router.get('/:id/members', verifyAuth, async (req, res, next) => {
         room_id,
         user_id,
         anonymous_name,
+        anonymous_session_id,
         role,
         can_edit,
         is_muted,
@@ -144,6 +146,7 @@ router.get('/:id/members', verifyAuth, async (req, res, next) => {
     const formatted = (members || []).map((m) => ({
       id: m.id,
       userId: m.user_id,
+      anonymousSessionId: m.anonymous_session_id,
       name: m.users?.name || m.anonymous_name || m.users?.email?.split('@')[0] || 'Collaborator',
       email: m.users?.email || null,
       avatar: m.users?.avatar || null,

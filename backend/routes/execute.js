@@ -33,6 +33,20 @@ router.post('/', executeLimiter, optionalAuth, async (req, res, next) => {
       });
     }
 
+    if (code.length > 100000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Code buffer exceeds maximum allowed limit (100KB).',
+      });
+    }
+
+    if (stdin && typeof stdin === 'string' && stdin.length > 20000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Standard input exceeds maximum allowed limit (20KB).',
+      });
+    }
+
     // 2. Validate Language
     if (!language) {
       return res.status(400).json({

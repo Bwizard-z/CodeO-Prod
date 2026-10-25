@@ -76,26 +76,28 @@ app.use(
       const cleanOrigin = origin.replace(/\/+$/, '');
       const cleanOriginHost = cleanOrigin.replace(/^https?:\/\//, '');
 
-      const isAllowed =
-        cleanOrigin.endsWith('.sslip.io') ||
-        cleanOrigin.includes('localhost') ||
-        cleanOrigin.includes('127.0.0.1') ||
-        /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?$/.test(cleanOriginHost) ||
-        allowedOrigins.some((allowed) => {
-          if (!allowed) return false;
-          const cleanAllowed = allowed.replace(/\/+$/, '');
-          if (cleanAllowed === cleanOrigin) return true;
-          if (cleanAllowed.replace(/^https?:\/\//, '') === cleanOriginHost) return true;
-          if (cleanAllowed.startsWith('*.')) return cleanOrigin.endsWith(cleanAllowed.slice(2));
-          return false;
-        });
+      const isConfiguredOrigin = allowedOrigins.some((allowed) => {
+        if (!allowed) return false;
+        const cleanAllowed = allowed.replace(/\/+$/, '');
+        if (cleanAllowed === cleanOrigin) return true;
+        if (cleanAllowed.replace(/^https?:\/\//, '') === cleanOriginHost) return true;
+        if (cleanAllowed.startsWith('*.')) return cleanOrigin.endsWith(cleanAllowed.slice(2));
+        return false;
+      });
 
-      if (isAllowed) {
+      if (isConfiguredOrigin) {
         return callback(null, true);
       }
 
+      // In local development, permit localhost / loopback interfaces
       if (!isProduction) {
-        return callback(null, true); // Permissive in development
+        const isLocal =
+          cleanOrigin.endsWith('.sslip.io') ||
+          cleanOrigin.includes('localhost') ||
+          cleanOrigin.includes('127.0.0.1');
+        if (isLocal) {
+          return callback(null, true);
+        }
       }
 
       return callback(new Error(`Origin ${origin} not allowed by CORS policy`));

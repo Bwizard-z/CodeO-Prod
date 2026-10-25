@@ -31,10 +31,22 @@ function formatAuthError(err) {
   if (lower.includes('rate limit') || lower.includes('too many requests')) {
     return 'Too many attempts. Please wait a few moments and try again.';
   }
-  if (lower.includes('network') || lower.includes('fetch')) {
+  if (lower.includes('network') || lower.includes('fetch') || lower.includes('econnrefused')) {
     return 'Network connection issue. Please check your connection and try again.';
   }
-  return message || 'An unexpected error occurred. Please try again.';
+
+  // Prevent leaking internal infrastructure or upstream service details
+  if (lower.includes('judge0') || lower.includes('2358') || lower.includes('gemini') || lower.includes('generativelanguage.googleapis.com')) {
+    return 'Code execution or AI service is temporarily unavailable. Please try again shortly.';
+  }
+
+  // Strip internal URLs, IP addresses, and ports
+  const sanitized = message
+    .replace(/https?:\/\/[^\s/$.?#].[^\s]*/gi, '[service]')
+    .replace(/(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?/g, '[server]')
+    .replace(/localhost:\d+/gi, '[internal]');
+
+  return sanitized || 'An unexpected error occurred. Please try again.';
 }
 
 // Global Express Error Handling Middleware

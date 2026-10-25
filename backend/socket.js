@@ -2,6 +2,9 @@
 const { Server } = require('socket.io');
 const { supabaseAdmin } = require('./services/supabase');
 
+// Singleton instance of initialized Socket.IO server
+let ioInstance = null;
+
 // Map<roomCode, Map<socketId, { id, name, email, avatar, role, color }>>
 const roomMembers = new Map();
 
@@ -55,6 +58,41 @@ function initSocket(server, allowedOrigins = []) {
     socket.on('join-room', async ({ roomCode, user }) => {
       if (!roomCode) return;
       const cleanCode = roomCode.toUpperCase().trim();
+
+      // Verify room exists in database and user is not kicked
+      try {
+        const { data: roomData } = await supabaseAdmin
+          .from('rooms')
+          .select('id, code, is_locked')
+          .eq('code', cleanCode)
+          .maybeSingle();
+
+        if (!roomData) {
+          socket.emit('error', { message: 'Room not found' });
+          return;
+        }
+
+        // If user ID is provided, verify they were not kicked
+        if (user?.id) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user.id));
+          if (isUuid) {
+            const { data: memberData } = await supabaseAdmin
+              .from('room_members')
+              .select('is_active, kicked_at')
+              .eq('room_id', roomData.id)
+              .or(`user_id.eq.${user.id},anonymous_session_id.eq.${user.id}`)
+              .maybeSingle();
+
+            if (memberData && (memberData.is_active === false || memberData.kicked_at)) {
+              socket.emit('user-kicked', { message: 'You have been removed from this room by the host.' });
+              return;
+            }
+          }
+        }
+      } catch (checkErr) {
+        console.warn('[Socket join verification warning]:', checkErr.message);
+      }
+
       currentRoomCode = cleanCode;
 
       const memberColor = getRandomColor(user?.id || user?.name || socket.id);
