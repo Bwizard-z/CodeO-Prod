@@ -1014,15 +1014,14 @@ function EditorPageInner() {
       <header className="w-full max-w-full bg-[#080c14] border-b border-white/10 px-1.5 sm:px-3 lg:px-4 py-1 sm:py-1.5 flex items-center justify-between gap-1 sm:gap-2 relative z-50 select-none shrink-0 min-h-[42px] sm:min-h-[46px] overflow-x-auto sm:overflow-x-visible no-scrollbar">
         {/* Left: Brand Logo, Exit Button, Room Pills, and Mobile/Split-screen Drawer Toggles */}
         <div className="flex items-center gap-1 sm:gap-2 min-w-0 shrink">
-          {/* Exit / Leave Room Button */}
+          {/* Exit / Leave Room Button - Icon-only in distinct red */}
           <button
             type="button"
             onClick={() => setShowLeaveModal(true)}
             title="Exit Room (Return to Dashboard)"
-            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-white/5 hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/30 text-neutral-300 hover:text-rose-300 transition-all text-xs font-sans font-semibold cursor-pointer shrink-0"
+            className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-600/20 hover:bg-red-600/35 border border-red-500/40 hover:border-red-500/70 text-red-400 hover:text-red-200 transition-all text-xs cursor-pointer shadow-sm shrink-0"
           >
             <FontAwesomeIcon icon={faRightFromBracket} className="text-xs" />
-            <span className="hidden min-[480px]:inline">Exit</span>
           </button>
 
           <Link to="/dashboard" className="hover:opacity-85 transition-opacity flex items-center shrink-0">
@@ -1040,13 +1039,16 @@ function EditorPageInner() {
             <span className="text-[11px] font-semibold">{activeCollaboratorsCount}</span>
           </button>
 
-          {/* Room Title - shown on wide screens to prevent crowding controls */}
-          <div className="hidden 2xl:flex bg-[#0e1424] border border-white/15 text-white px-2.5 py-1 rounded-lg font-sans font-semibold text-xs tracking-wide items-center truncate max-w-[140px] shadow-inner shrink">
-            {roomLoading ? 'Loading room...' : roomInfo?.title || `Room ${roomCode}`}
+          {/* Room Title - matched in size, padding, and height with Room ID box */}
+          <div
+            className="hidden xl:flex items-center bg-[#0e1424] border border-white/15 text-white px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-sans font-semibold text-[11px] sm:text-xs shadow-inner shrink-0 max-w-[180px] h-[28px] sm:h-[30px]"
+            title={roomInfo?.title || `Room ${roomCode}`}
+          >
+            <span className="truncate">{roomLoading ? 'Loading...' : roomInfo?.title || `Room ${roomCode}`}</span>
           </div>
 
-          {/* Room Code & Copy Buttons - always compact and responsive */}
-          <div className="bg-[#0e1424] border border-white/15 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg font-mono text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 shadow-inner shrink-0">
+          {/* Room Code & Copy Buttons - always compact and consistent with Room Title */}
+          <div className="flex items-center bg-[#0e1424] border border-white/15 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg font-mono text-[11px] sm:text-xs shadow-inner shrink-0 gap-1 sm:gap-1.5 h-[28px] sm:h-[30px]">
             <span className="hidden min-[400px]:inline text-neutral-400 font-sans text-[10px] font-semibold uppercase">ID:</span>
             <span className="font-semibold text-white tracking-wider">{roomCode}</span>
 
