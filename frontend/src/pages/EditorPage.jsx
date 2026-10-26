@@ -935,6 +935,9 @@ function EditorPageInner() {
       if (socket && roomCode) {
         socket.emit('leave-room', { roomCode });
       }
+      if (roomCode) {
+        api.leaveRoom(roomCode).catch(() => {});
+      }
     } catch (err) {
       console.warn('[EditorPage] Error emitting leave-room:', err);
     }

@@ -25,11 +25,84 @@ function getRandomColor(seed = '') {
   for (let i = 0; i < seed.length; i++) {
     hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const index = Math.abs(hash) % COLLABORATOR_COLORS.length;
   return COLLABORATOR_COLORS[index];
 }
 
+// Synchronize active status in room_members table with real-time presence
+async function activateMemberInDb(roomCode, user) {
+  if (!roomCode || !user?.id) return;
+  try {
+    const { data: roomRow } = await supabaseAdmin.from('rooms').select('id').eq('code', roomCode).maybeSingle();
+    if (!roomRow?.id) return;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user.id));
+    if (isUuid) {
+      await supabaseAdmin
+        .from('room_members')
+        .update({ is_active: true, kicked_at: null })
+        .eq('room_id', roomRow.id)
+        .eq('user_id', user.id);
+    } else {
+      const anonSessionId = user.anonymousSessionId || user.anonymous_session_id;
+      if (anonSessionId) {
+        await supabaseAdmin
+          .from('room_members')
+          .update({ is_active: true, kicked_at: null })
+          .eq('room_id', roomRow.id)
+          .eq('anonymous_session_id', anonSessionId);
+      }
+    }
+  } catch (err) {
+    console.warn('[Socket] DB member activation note:', err.message);
+  }
+}
+
+async function deactivateMemberInDb(roomCode, user, isLastUser = false) {
+  if (!roomCode) return;
+  try {
+    const { data: roomRow } = await supabaseAdmin.from('rooms').select('id').eq('code', roomCode).maybeSingle();
+    if (!roomRow?.id) return;
+
+    if (isLastUser) {
+      await supabaseAdmin.from('room_members').update({ is_active: false }).eq('room_id', roomRow.id);
+      return;
+    }
+
+    if (user?.id) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user.id));
+      if (isUuid) {
+        await supabaseAdmin
+          .from('room_members')
+          .update({ is_active: false })
+          .eq('room_id', roomRow.id)
+          .eq('user_id', user.id);
+      } else {
+        const anonSessionId = user.anonymousSessionId || user.anonymous_session_id;
+        if (anonSessionId) {
+          await supabaseAdmin
+            .from('room_members')
+            .update({ is_active: false })
+            .eq('room_id', roomRow.id)
+            .eq('anonymous_session_id', anonSessionId);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Socket] DB member deactivation note:', err.message);
+  }
+}
+
+// On server startup: Reset any lingering active flags from past server sessions
+async function reconcileStaleMembers() {
+  try {
+    await supabaseAdmin.from('room_members').update({ is_active: false }).eq('is_active', true);
+  } catch (err) {
+    console.warn('[Socket] Startup member reconciliation note:', err.message);
+  }
+}
+
 function initSocket(server, allowedOrigins = []) {
+  reconcileStaleMembers();
   const isProduction = process.env.NODE_ENV === 'production';
   const io = new Server(server, {
     cors: {
@@ -133,6 +206,9 @@ function initSocket(server, allowedOrigins = []) {
         user: currentUser,
         timestamp: new Date().toISOString(),
       });
+
+      // Synchronize active status in database
+      activateMemberInDb(cleanCode, currentUser);
     });
 
     // 1b. User Role / Profile Metadata Update (e.g. host role discovered)
@@ -637,9 +713,16 @@ function initSocket(server, allowedOrigins = []) {
 
         if (remaining.length === 0) {
           roomMembers.delete(code);
+          deactivateMemberInDb(code, null, true);
         } else {
           io.to(`room-${code}`).emit('room-users', remaining);
+          const userStillPresent = remaining.some((m) => String(m.id) === String(currentUser?.id));
+          if (!userStillPresent) {
+            deactivateMemberInDb(code, currentUser, false);
+          }
         }
+      } else {
+        deactivateMemberInDb(code, currentUser, false);
       }
 
       if (currentUser) {
@@ -665,8 +748,13 @@ function initSocket(server, allowedOrigins = []) {
 
           if (remaining.length === 0) {
             roomMembers.delete(code);
+            deactivateMemberInDb(code, null, true);
           } else {
             io.to(`room-${code}`).emit('room-users', remaining);
+            const userStillPresent = remaining.some((m) => String(m.id) === String(removedUser?.id));
+            if (!userStillPresent) {
+              deactivateMemberInDb(code, removedUser || currentUser, false);
+            }
           }
 
           io.to(`room-${code}`).emit('user-left', {

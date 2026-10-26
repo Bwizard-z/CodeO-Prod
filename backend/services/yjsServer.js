@@ -277,6 +277,24 @@ function setupYjsConnection(conn, req) {
         persistRoomContent(roomCode, room.doc);
 
         const cleanCode = roomCode.toUpperCase().trim();
+
+        // Deactivate room members in DB when all connections have left
+        supabaseAdmin
+          .from('rooms')
+          .select('id')
+          .eq('code', cleanCode)
+          .maybeSingle()
+          .then(({ data: r }) => {
+            if (r) {
+              supabaseAdmin
+                .from('room_members')
+                .update({ is_active: false })
+                .eq('room_id', r.id)
+                .then(() => {});
+            }
+          })
+          .catch(() => {});
+
         if (room.evictionTimeout) {
           clearTimeout(room.evictionTimeout);
         }

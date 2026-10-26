@@ -303,7 +303,7 @@ async function createRoom({ title, description, language = 'javascript', userId 
       role: 'host',
       can_edit: true,
       is_muted: false,
-      is_active: true,
+      is_active: false,
     });
 
   if (memberError) {
