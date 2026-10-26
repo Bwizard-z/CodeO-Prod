@@ -166,6 +166,7 @@ router.post('/', executeLimiter, optionalAuth, async (req, res, next) => {
       broadcastCodeExecuted(broadcastTarget, {
         output: execResult.output,
         language: canonicalLang,
+        stdin: stdin || '',
         userName,
         timestamp,
         executionTime: executionTimeMs,

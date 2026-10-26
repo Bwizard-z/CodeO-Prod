@@ -266,6 +266,7 @@ function initSocket(server, allowedOrigins = []) {
       const payload = {
         output: data.output || '',
         language: data.language || '',
+        stdin: data.stdin !== undefined ? data.stdin : '',
         status: data.status || (data.error ? 'error' : 'success'),
         executionTime: data.executionTime || 0,
         error: Boolean(data.error),
@@ -278,6 +279,39 @@ function initSocket(server, allowedOrigins = []) {
       // Broadcast to all other peers in the room
       socket.to(`room-${cleanCode}`).emit('code-result', payload);
       socket.to(`room-${cleanCode}`).emit('code-output', payload);
+    });
+
+    // 4b. Real-Time Stdin Change Broadcast
+    socket.on('stdin-change', (data) => {
+      const roomCode = data?.roomCode || currentRoomCode;
+      if (!roomCode) return;
+      const cleanCode = roomCode.toUpperCase().trim();
+      socket.to(`room-${cleanCode}`).emit('stdin-changed', {
+        stdin: data?.stdin !== undefined ? data.stdin : '',
+        userName: currentUser?.name || 'Collaborator',
+        userId: currentUser?.id,
+      });
+    });
+
+    // 4c. Real-Time Code Running Indicator Broadcast
+    socket.on('code-running', (data) => {
+      const roomCode = data?.roomCode || currentRoomCode;
+      if (!roomCode) return;
+      const cleanCode = roomCode.toUpperCase().trim();
+      socket.to(`room-${cleanCode}`).emit('code-running', {
+        userName: data?.userName || currentUser?.name || 'A collaborator',
+        language: data?.language || '',
+        stdin: data?.stdin !== undefined ? data.stdin : '',
+        userId: currentUser?.id,
+      });
+    });
+
+    // 4d. Code Output Cleared Broadcast
+    socket.on('code-cleared', (data) => {
+      const roomCode = data?.roomCode || currentRoomCode;
+      if (!roomCode) return;
+      const cleanCode = roomCode.toUpperCase().trim();
+      socket.to(`room-${cleanCode}`).emit('code-cleared', {});
     });
 
     // 5. Code Explanation Results Broadcast
@@ -461,15 +495,31 @@ function initSocket(server, allowedOrigins = []) {
     // Helper to verify if currentUser is the room host
     async function checkIsHost(code, user) {
       if (!code || !user) return false;
-      if (user.role === 'host') return true;
+      if (String(user.role || '').toLowerCase() === 'host') return true;
       try {
         const { data: room } = await supabaseAdmin
           .from('rooms')
           .select('id, created_by')
           .eq('code', code)
           .maybeSingle();
-        if (room && String(room.created_by) === String(user.id)) {
+
+        if (
+          room &&
+          user.id &&
+          room.created_by &&
+          String(room.created_by).trim().toLowerCase() === String(user.id).trim().toLowerCase()
+        ) {
           return true;
+        }
+
+        if (room && user.id) {
+          const { data: member } = await supabaseAdmin
+            .from('room_members')
+            .select('role')
+            .eq('room_id', room.id)
+            .or(`user_id.eq.${user.id},anonymous_session_id.eq.${user.id}`)
+            .maybeSingle();
+          if (member && member.role === 'host') return true;
         }
       } catch (err) {
         console.warn('[Socket] Error checking room host:', err.message);
@@ -489,6 +539,21 @@ function initSocket(server, allowedOrigins = []) {
         targetUserId: String(targetUserId),
         roomCode: code,
         mutedBy: currentUser?.name || 'Host',
+      });
+    });
+
+    // 10b. Host Moderation: Unmute specific user
+    socket.on('host-unmute-user', async ({ roomCode, targetUserId }) => {
+      const code = (roomCode || currentRoomCode)?.toUpperCase()?.trim();
+      if (!code || !targetUserId) return;
+      const isHost = await checkIsHost(code, currentUser);
+      if (!isHost) {
+        return socket.emit('error', { message: 'Only the room host can unmute participants.' });
+      }
+      io.to(`room-${code}`).emit('unmute-user', {
+        targetUserId: String(targetUserId),
+        roomCode: code,
+        unmutedBy: currentUser?.name || 'Host',
       });
     });
 
@@ -784,6 +849,7 @@ function broadcastCodeExecuted(roomCode, data) {
   const payload = {
     output: data.output || '',
     language: data.language || '',
+    stdin: data.stdin !== undefined ? data.stdin : '',
     userName: data.userName || 'Collaborator',
     timestamp: data.timestamp || new Date().toISOString(),
     executionTime: data.executionTime || 0,

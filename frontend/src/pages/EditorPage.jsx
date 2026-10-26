@@ -682,6 +682,7 @@ function EditorPageInner() {
       const responseText = data.message || data.response;
       if (!responseText) return;
 
+      setIsAiPanelOpen(true);
       setIsExplaining(false);
       setAiOutput(responseText);
 
@@ -704,6 +705,7 @@ function EditorPageInner() {
     // 3. Full chat turn broadcast from server
     const handleRemoteAiChatSync = (data) => {
       if (!data) return;
+      setIsAiPanelOpen(true);
       setIsExplaining(false);
 
       if (data.assistantMessage?.text) {
@@ -754,6 +756,24 @@ function EditorPageInner() {
       socket.off('ai-chat-sync', handleRemoteAiChatSync);
       socket.off('ai-response-error', handleRemoteAiError);
       socket.off('ai-chat-clear', handleRemoteAiClear);
+    };
+  }, [socket]);
+
+  // Real-time synchronization of Terminal expansion on collaborator code execution
+  useEffect(() => {
+    if (!socket) return;
+    const handleExpandTerminal = () => {
+      setIsTerminalCollapsed(false);
+    };
+
+    socket.on('code-running', handleExpandTerminal);
+    socket.on('code-output', handleExpandTerminal);
+    socket.on('code-result', handleExpandTerminal);
+
+    return () => {
+      socket.off('code-running', handleExpandTerminal);
+      socket.off('code-output', handleExpandTerminal);
+      socket.off('code-result', handleExpandTerminal);
     };
   }, [socket]);
 

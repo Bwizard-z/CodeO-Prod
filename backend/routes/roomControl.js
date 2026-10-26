@@ -20,15 +20,18 @@ async function resolveRoomAndVerifyHost(roomIdOrCode, userId) {
     throw new AppError('Room not found.', 404, 'ROOM_NOT_FOUND');
   }
 
-  const isCreator = String(room.created_by) === String(userId);
+  const isCreator =
+    room.created_by &&
+    userId &&
+    String(room.created_by).trim().toLowerCase() === String(userId).trim().toLowerCase();
+
   if (!isCreator) {
     // Also check if user has host role in room_members
     const { data: member } = await supabaseAdmin
       .from('room_members')
       .select('role')
       .eq('room_id', room.id)
-      .eq('user_id', userId)
-      .eq('is_active', true)
+      .or(`user_id.eq.${userId},anonymous_session_id.eq.${userId}`)
       .maybeSingle();
 
     if (member?.role !== 'host') {

@@ -48,13 +48,22 @@ export function useCodeExecution(roomCode, user = null, socket = null) {
     localStorage.getItem('codeo_guest_name') ||
     'Collaborator';
 
-  // 1. Listen for real-time execution results broadcasted by other room members
+  // Stdin change handler with automatic room-wide socket broadcast
+  const handleStdinChange = useCallback((newStdin, broadcast = true) => {
+    setStdin(newStdin);
+    if (broadcast && socket && roomCode) {
+      socket.emit('stdin-change', { roomCode, stdin: newStdin });
+    }
+  }, [socket, roomCode]);
+
+  // 1. Listen for real-time execution results & stdin updates broadcasted by other room members
   useEffect(() => {
     if (!socket) return;
 
     const handleRemoteResult = (data) => {
       if (!data) return;
 
+      setLoading(false);
       const remoteOutput = data.output || (data.error ? data.error_message || 'Execution Error' : '');
       setOutput(remoteOutput);
       setExecutionTime(data.executionTime || data.execution_time_ms || null);
@@ -64,6 +73,10 @@ export function useCodeExecution(roomCode, user = null, socket = null) {
 
       if (data.language) {
         setLanguageState(data.language.toLowerCase());
+      }
+
+      if (data.stdin !== undefined) {
+        setStdin(data.stdin);
       }
 
       // Append to local history list (up to 100 items)
@@ -81,12 +94,40 @@ export function useCodeExecution(roomCode, user = null, socket = null) {
       ]);
     };
 
+    const handleRemoteStdin = (data) => {
+      if (data && data.stdin !== undefined) {
+        setStdin(data.stdin);
+      }
+    };
+
+    const handleRemoteCodeRunning = (data) => {
+      setLoading(true);
+      setStatus('running');
+      if (data?.userName) setExecutedBy(data.userName);
+      if (data?.stdin !== undefined) setStdin(data.stdin);
+    };
+
+    const handleRemoteCodeCleared = () => {
+      setOutput('');
+      setError(null);
+      setExecutionTime(null);
+      setExecutedBy(null);
+      setStatus('idle');
+      setLoading(false);
+    };
+
     socket.on('code-result', handleRemoteResult);
     socket.on('code-output', handleRemoteResult);
+    socket.on('stdin-changed', handleRemoteStdin);
+    socket.on('code-running', handleRemoteCodeRunning);
+    socket.on('code-cleared', handleRemoteCodeCleared);
 
     return () => {
       socket.off('code-result', handleRemoteResult);
       socket.off('code-output', handleRemoteResult);
+      socket.off('stdin-changed', handleRemoteStdin);
+      socket.off('code-running', handleRemoteCodeRunning);
+      socket.off('code-cleared', handleRemoteCodeCleared);
     };
   }, [socket, language]);
 
@@ -104,20 +145,27 @@ export function useCodeExecution(roomCode, user = null, socket = null) {
   }, []);
 
   // 3. Clear output & stats
-  const clearOutput = useCallback(() => {
+  const clearOutput = useCallback((broadcast = true) => {
     setOutput('');
     setError(null);
     setExecutionTime(null);
     setExecutedBy(null);
     setStatus('idle');
-  }, []);
+    setLoading(false);
+    if (broadcast && socket && roomCode) {
+      socket.emit('code-cleared', { roomCode });
+    }
+  }, [socket, roomCode]);
 
   // 4. Clear all history and reset panel
   const clearHistory = useCallback(() => {
-    clearOutput();
+    clearOutput(true);
     setStdin('');
+    if (socket && roomCode) {
+      socket.emit('stdin-change', { roomCode, stdin: '' });
+    }
     setHistory([]);
-  }, [clearOutput]);
+  }, [clearOutput, socket, roomCode]);
 
   // 5. Fetch Execution Languages
   const getLanguages = useCallback(async () => {
@@ -181,6 +229,16 @@ export function useCodeExecution(roomCode, user = null, socket = null) {
     setError(null);
     setStatus('running');
 
+    // Emit real-time code-running indicator so all collaborators see Judge0 spinner immediately
+    if (socket && roomCode) {
+      socket.emit('code-running', {
+        roomCode,
+        userName,
+        language: currentLang,
+        stdin: currentStdin,
+      });
+    }
+
     try {
       const res = await api.executeCode({
         language: currentLang,
@@ -217,6 +275,7 @@ export function useCodeExecution(roomCode, user = null, socket = null) {
           roomCode,
           output: execOutput,
           language: currentLang,
+          stdin: currentStdin,
           executionTime: execTime,
           error: isExecError,
           status: resolvedStatus,
@@ -283,7 +342,7 @@ export function useCodeExecution(roomCode, user = null, socket = null) {
     language,
     setLanguage,
     stdin,
-    setStdin,
+    setStdin: handleStdinChange,
     executionTime,
     executedBy,
     status,

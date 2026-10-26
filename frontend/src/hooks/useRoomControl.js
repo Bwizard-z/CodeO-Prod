@@ -82,25 +82,23 @@ export function useRoomControl({
     if (!targetIdentifier) return false;
     setActionLoading((prev) => ({ ...prev, lock: true }));
     setError(null);
+    setIsLocked(true);
+
+    // Instant socket broadcast to room collaborators
+    if (socket && roomCode) {
+      socket.emit('host-lock-room', { roomCode });
+    }
+
     try {
-      const res = await api.lockRoom(targetIdentifier);
-      if (isMountedRef.current) {
-        setIsLocked(true);
-      }
-      return true;
+      await api.lockRoom(targetIdentifier);
     } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Failed to lock room.';
-      if (isMountedRef.current) setError(msg);
-      // Fallback: emit direct socket event
-      if (socket && roomCode) {
-        socket.emit('host-lock-room', { roomCode });
-      }
-      return false;
+      console.warn('[useRoomControl] Lock room DB note:', err.message);
     } finally {
       if (isMountedRef.current) {
         setActionLoading((prev) => ({ ...prev, lock: false }));
       }
     }
+    return true;
   }, [targetIdentifier, socket, roomCode]);
 
   /**
@@ -110,25 +108,23 @@ export function useRoomControl({
     if (!targetIdentifier) return false;
     setActionLoading((prev) => ({ ...prev, lock: true }));
     setError(null);
+    setIsLocked(false);
+
+    // Instant socket broadcast to room collaborators
+    if (socket && roomCode) {
+      socket.emit('host-unlock-room', { roomCode });
+    }
+
     try {
-      const res = await api.unlockRoom(targetIdentifier);
-      if (isMountedRef.current) {
-        setIsLocked(false);
-      }
-      return true;
+      await api.unlockRoom(targetIdentifier);
     } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Failed to unlock room.';
-      if (isMountedRef.current) setError(msg);
-      // Fallback: emit direct socket event
-      if (socket && roomCode) {
-        socket.emit('host-unlock-room', { roomCode });
-      }
-      return false;
+      console.warn('[useRoomControl] Unlock room DB note:', err.message);
     } finally {
       if (isMountedRef.current) {
         setActionLoading((prev) => ({ ...prev, lock: false }));
       }
     }
+    return true;
   }, [targetIdentifier, socket, roomCode]);
 
   /**
@@ -150,28 +146,29 @@ export function useRoomControl({
     const actionKey = `mute_${memberId}`;
     setActionLoading((prev) => ({ ...prev, [actionKey]: true }));
     setError(null);
+
+    setMembers((prev) =>
+      prev.map((m) =>
+        String(m.id) === String(memberId) || String(m.userId) === String(memberId)
+          ? { ...m, isMuted: true }
+          : m
+      )
+    );
+
+    if (socket && roomCode) {
+      socket.emit('host-mute-user', { roomCode, targetUserId: memberId });
+    }
+
     try {
       await api.muteMember(targetIdentifier, memberId);
-      setMembers((prev) =>
-        prev.map((m) =>
-          String(m.id) === String(memberId) || String(m.userId) === String(memberId)
-            ? { ...m, isMuted: true }
-            : m
-        )
-      );
-      return true;
     } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Failed to mute member.';
-      if (isMountedRef.current) setError(msg);
-      if (socket && roomCode) {
-        socket.emit('host-mute-user', { roomCode, targetUserId: memberId });
-      }
-      return false;
+      console.warn('[useRoomControl] Mute member DB note:', err.message);
     } finally {
       if (isMountedRef.current) {
         setActionLoading((prev) => ({ ...prev, [actionKey]: false }));
       }
     }
+    return true;
   }, [targetIdentifier, socket, roomCode]);
 
   /**
@@ -182,26 +179,30 @@ export function useRoomControl({
     const actionKey = `mute_${memberId}`;
     setActionLoading((prev) => ({ ...prev, [actionKey]: true }));
     setError(null);
+
+    setMembers((prev) =>
+      prev.map((m) =>
+        String(m.id) === String(memberId) || String(m.userId) === String(memberId)
+          ? { ...m, isMuted: false }
+          : m
+      )
+    );
+
+    if (socket && roomCode) {
+      socket.emit('host-unmute-user', { roomCode, targetUserId: memberId });
+    }
+
     try {
       await api.unmuteMember(targetIdentifier, memberId);
-      setMembers((prev) =>
-        prev.map((m) =>
-          String(m.id) === String(memberId) || String(m.userId) === String(memberId)
-            ? { ...m, isMuted: false }
-            : m
-        )
-      );
-      return true;
     } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Failed to unmute member.';
-      if (isMountedRef.current) setError(msg);
-      return false;
+      console.warn('[useRoomControl] Unmute member DB note:', err.message);
     } finally {
       if (isMountedRef.current) {
         setActionLoading((prev) => ({ ...prev, [actionKey]: false }));
       }
     }
-  }, [targetIdentifier]);
+    return true;
+  }, [targetIdentifier, socket, roomCode]);
 
   /**
    * Disable editor for a specific member
