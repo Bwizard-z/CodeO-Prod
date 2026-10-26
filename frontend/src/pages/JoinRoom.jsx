@@ -17,12 +17,6 @@ import Footer from '../components/Footer';
 import codeoLogo from '../assets/Logo.png';
 import { api } from '../services/api';
 
-// Quick demo rooms for testing and instant access
-const DEMO_ROOMS = [
-  { code: 'ABCSDKE', label: 'JavaScript Room', lang: 'JS' },
-  { code: 'PYTH992', label: 'Python Sandbox', lang: 'PY' },
-  { code: 'JAVX410', label: 'Java Practice', lang: 'Java' },
-];
 
 export const JoinRoom = () => {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -96,10 +90,6 @@ export const JoinRoom = () => {
     navigate(`/editor/${cleanCode}`);
   };
 
-  const handleSelectPreset = (presetCode) => {
-    setRoomCode(presetCode);
-    setErrorMsg('');
-  };
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col justify-between selection:bg-[#fbff47] selection:text-black">
@@ -187,28 +177,6 @@ export const JoinRoom = () => {
                     </div>
                   </div>
 
-                  {/* Quick Preset Rooms */}
-                  <div className="pt-1">
-                    <div className="text-[10px] font-sans font-semibold text-neutral-400 mb-1.5">
-                      Try quick active rooms:
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {DEMO_ROOMS.map((demo) => (
-                        <button
-                          key={demo.code}
-                          type="button"
-                          onClick={() => handleSelectPreset(demo.code)}
-                          className={`text-xs px-2.5 py-0.5 rounded-full font-mono transition-all cursor-pointer ${
-                            roomCode === demo.code
-                              ? 'bg-[#fbff47] text-black font-bold ring-1 ring-white/50'
-                              : 'bg-white/10 text-neutral-300 hover:bg-white/20 hover:text-white border border-white/10'
-                          }`}
-                        >
-                          {demo.code} <span className="text-[9px] opacity-70">({demo.lang})</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
 
                   {/* Join Button */}
                   <div className="pt-2">
