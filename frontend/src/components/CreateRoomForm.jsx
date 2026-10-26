@@ -6,16 +6,11 @@ import { faPlus, faSpinner, faTriangleExclamation } from '@fortawesome/free-soli
 import { useRoom } from '../hooks/useRoom';
 
 const SUPPORTED_LANGUAGES = [
+  { value: 'java', label: 'Java' },
   { value: 'javascript', label: 'JavaScript' },
   { value: 'python', label: 'Python' },
-  { value: 'cpp', label: 'C++' },
-  { value: 'java', label: 'Java' },
-  { value: 'rust', label: 'Rust' },
-  { value: 'go', label: 'Go' },
   { value: 'typescript', label: 'TypeScript' },
-  { value: 'c', label: 'C' },
-  { value: 'php', label: 'PHP' },
-  { value: 'html', label: 'HTML/CSS' },
+  { value: 'cpp', label: 'C++' },
 ];
 
 export function CreateRoomForm({
