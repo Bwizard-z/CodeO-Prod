@@ -95,6 +95,17 @@ export const Dashboard = () => {
     }
   };
 
+  // Handle Description update from RoomCard
+  const handleUpdateDescription = async (idOrCode, newDescription) => {
+    const result = await updateRoom(idOrCode, { description: newDescription });
+    if (result.success) {
+      showToast('Room description updated.');
+      await getUserRooms();
+    } else {
+      showToast(result.error || 'Failed to update description.');
+    }
+  };
+
   // Filter active rooms by search query (backend already orders by created_at DESC)
   const processedRooms = useMemo(() => {
     let list = [...(rooms || [])];
@@ -266,6 +277,7 @@ export const Dashboard = () => {
                 room={room}
                 onDelete={handleDelete}
                 onRename={handleRename}
+                onUpdateDescription={handleUpdateDescription}
                 onCopySuccess={(code) => showToast(`Room code ${code} copied to clipboard!`)}
               />
             ))}

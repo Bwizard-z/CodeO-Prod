@@ -10,6 +10,7 @@ import {
   faLock,
   faEllipsisVertical,
   faPenToSquare,
+  faAlignLeft,
   faXmark,
   faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
@@ -19,6 +20,8 @@ export function RoomCard({
   room,
   onDelete,
   onRename,
+  onUpdateDescription,
+  onUpdate,
   onCopySuccess,
 }) {
   const navigate = useNavigate();
@@ -28,7 +31,26 @@ export function RoomCard({
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState(room?.title || room?.name || 'Untitled Room');
   const [renaming, setRenaming] = useState(false);
+
+  // Description editing state
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+  const [newDesc, setNewDesc] = useState(room?.description || '');
+  const [savingDesc, setSavingDesc] = useState(false);
+
   const menuRef = useRef(null);
+
+  // Sync state if room changes externally
+  useEffect(() => {
+    if (!isRenaming) {
+      setNewTitle(room?.title || room?.name || 'Untitled Room');
+    }
+  }, [room?.title, room?.name, isRenaming]);
+
+  useEffect(() => {
+    if (!isEditingDesc) {
+      setNewDesc(room?.description || '');
+    }
+  }, [room?.description, isEditingDesc]);
 
   // Close 3-dots menu on outside click or Escape
   useEffect(() => {
@@ -70,13 +92,14 @@ export function RoomCard({
   };
 
   const handleOpenRoom = () => {
-    if (isRenaming) return;
+    if (isRenaming || isEditingDesc) return;
     navigate(`/editor/${code}`);
   };
 
   const handleStartRename = (e) => {
     e.stopPropagation();
     setIsMenuOpen(false);
+    setIsEditingDesc(false);
     setNewTitle(currentTitle);
     setIsRenaming(true);
   };
@@ -100,12 +123,52 @@ export function RoomCard({
       setRenaming(true);
       if (onRename) {
         await onRename(room.id || room.code, clean);
+      } else if (onUpdate) {
+        await onUpdate(room.id || room.code, { title: clean });
       }
       setIsRenaming(false);
     } catch {
       // error handled in parent
     } finally {
       setRenaming(false);
+    }
+  };
+
+  const handleStartEditDesc = (e) => {
+    e.stopPropagation();
+    setIsMenuOpen(false);
+    setIsRenaming(false);
+    setNewDesc(room?.description || '');
+    setIsEditingDesc(true);
+  };
+
+  const handleCancelEditDesc = (e) => {
+    if (e) e.stopPropagation();
+    setIsEditingDesc(false);
+    setNewDesc(room?.description || '');
+  };
+
+  const handleSaveDesc = async (e) => {
+    if (e) e.stopPropagation();
+    if (e) e.preventDefault();
+    const clean = newDesc.trim();
+    if (clean === (room?.description || '').trim()) {
+      setIsEditingDesc(false);
+      return;
+    }
+
+    try {
+      setSavingDesc(true);
+      if (onUpdateDescription) {
+        await onUpdateDescription(room.id || room.code, clean);
+      } else if (onUpdate) {
+        await onUpdate(room.id || room.code, { description: clean });
+      }
+      setIsEditingDesc(false);
+    } catch {
+      // error handled in parent
+    } finally {
+      setSavingDesc(false);
     }
   };
 
@@ -180,7 +243,7 @@ export function RoomCard({
               {isMenuOpen && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute right-0 top-full mt-1.5 w-36 rounded-xl bg-[#111726] border border-white/15 shadow-2xl z-30 py-1 font-sans text-xs animate-fade-in backdrop-blur-md"
+                  className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-[#111726] border border-white/15 shadow-2xl z-30 py-1 font-sans text-xs animate-fade-in backdrop-blur-md"
                 >
                   <button
                     type="button"
@@ -189,6 +252,15 @@ export function RoomCard({
                   >
                     <FontAwesomeIcon icon={faPenToSquare} className="text-[#fbff47] text-[11px]" />
                     <span>Rename Room</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleStartEditDesc}
+                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-neutral-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    <FontAwesomeIcon icon={faAlignLeft} className="text-[#fbff47] text-[11px]" />
+                    <span>Edit Description</span>
                   </button>
 
                   {onDelete && (
@@ -254,10 +326,58 @@ export function RoomCard({
           </h3>
         )}
 
-        {/* Description */}
-        <p className="text-neutral-400 text-xs font-sans line-clamp-2 leading-relaxed mb-3">
-          {description}
-        </p>
+        {/* Description or Inline Description Edit Form */}
+        {isEditingDesc ? (
+          <form
+            onSubmit={handleSaveDesc}
+            onClick={(e) => e.stopPropagation()}
+            className="flex flex-col gap-1.5 mb-3 mt-1"
+          >
+            <textarea
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') handleCancelEditDesc(e);
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                  handleSaveDesc(e);
+                }
+              }}
+              autoFocus
+              maxLength={500}
+              rows={2}
+              placeholder="Enter room description..."
+              className="w-full bg-white/10 border border-[#fbff47]/60 rounded-lg p-2 text-xs text-white font-sans focus:outline-none focus:ring-1 focus:ring-[#fbff47] resize-none leading-relaxed transition-all"
+            />
+            <div className="flex items-center justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={handleCancelEditDesc}
+                className="px-2 py-0.5 rounded-md bg-white/10 text-neutral-400 hover:text-white hover:bg-white/15 transition-colors text-[11px] font-sans cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingDesc}
+                className="px-2.5 py-0.5 rounded-md bg-[#fbff47] text-black hover:bg-yellow-300 transition-colors text-[11px] font-semibold font-sans cursor-pointer disabled:opacity-50 flex items-center gap-1"
+              >
+                {savingDesc ? (
+                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-[10px]" />
+                ) : (
+                  <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
+                )}
+                <span>Save</span>
+              </button>
+            </div>
+          </form>
+        ) : (
+          <p
+            className="text-neutral-400 text-xs font-sans line-clamp-2 leading-relaxed mb-3"
+            title={description}
+          >
+            {description}
+          </p>
+        )}
       </div>
 
       {/* Footer: Card Actions */}
