@@ -25,8 +25,13 @@ function getRandomColor(seed = '') {
   for (let i = 0; i < seed.length; i++) {
     hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   }
+  const index = Math.abs(hash) % COLLABORATOR_COLORS.length;
   return COLLABORATOR_COLORS[index];
 }
+
+// In-memory cache of latest execution output & stdin per room for immediate sync on join
+const latestRoomOutputs = new Map();
+const latestRoomStdin = new Map();
 
 // Synchronize active status in room_members table with real-time presence
 async function activateMemberInDb(roomCode, user) {
@@ -156,7 +161,7 @@ function initSocket(server, allowedOrigins = []) {
               .or(`user_id.eq.${user.id},anonymous_session_id.eq.${user.id}`)
               .maybeSingle();
 
-            if (memberData && (memberData.is_active === false || memberData.kicked_at)) {
+            if (memberData && memberData.kicked_at) {
               socket.emit('user-kicked', { message: 'You have been removed from this room by the host.' });
               return;
             }
@@ -181,6 +186,14 @@ function initSocket(server, allowedOrigins = []) {
       };
 
       socket.join(`room-${cleanCode}`);
+
+      // Instantly synchronize latest execution output & stdin to this newly joined socket
+      if (latestRoomOutputs.has(cleanCode)) {
+        socket.emit('code-output', latestRoomOutputs.get(cleanCode));
+      }
+      if (latestRoomStdin.has(cleanCode)) {
+        socket.emit('stdin-changed', { stdin: latestRoomStdin.get(cleanCode) });
+      }
 
       if (!roomMembers.has(cleanCode)) {
         roomMembers.set(cleanCode, new Map());
@@ -276,9 +289,15 @@ function initSocket(server, allowedOrigins = []) {
         timestamp: data.timestamp || new Date().toISOString(),
       };
 
-      // Broadcast to all other peers in the room
-      socket.to(`room-${cleanCode}`).emit('code-result', payload);
-      socket.to(`room-${cleanCode}`).emit('code-output', payload);
+      // Cache latest output & stdin for room
+      latestRoomOutputs.set(cleanCode, payload);
+      if (data?.stdin !== undefined) {
+        latestRoomStdin.set(cleanCode, data.stdin);
+      }
+
+      // Broadcast to all sockets in the room
+      io.to(`room-${cleanCode}`).emit('code-result', payload);
+      io.to(`room-${cleanCode}`).emit('code-output', payload);
     });
 
     // 4b. Real-Time Stdin Change Broadcast
@@ -286,6 +305,9 @@ function initSocket(server, allowedOrigins = []) {
       const roomCode = data?.roomCode || currentRoomCode;
       if (!roomCode) return;
       const cleanCode = roomCode.toUpperCase().trim();
+      if (data?.stdin !== undefined) {
+        latestRoomStdin.set(cleanCode, data.stdin);
+      }
       socket.to(`room-${cleanCode}`).emit('stdin-changed', {
         stdin: data?.stdin !== undefined ? data.stdin : '',
         userName: currentUser?.name || 'Collaborator',
@@ -311,7 +333,8 @@ function initSocket(server, allowedOrigins = []) {
       const roomCode = data?.roomCode || currentRoomCode;
       if (!roomCode) return;
       const cleanCode = roomCode.toUpperCase().trim();
-      socket.to(`room-${cleanCode}`).emit('code-cleared', {});
+      latestRoomOutputs.delete(cleanCode);
+      io.to(`room-${cleanCode}`).emit('code-cleared', {});
     });
 
     // 5. Code Explanation Results Broadcast
@@ -857,6 +880,10 @@ function broadcastCodeExecuted(roomCode, data) {
     ranBy: data.userName || 'Collaborator',
     userId: data.userId || null,
   };
+  latestRoomOutputs.set(cleanCode, payload);
+  if (data?.stdin !== undefined) {
+    latestRoomStdin.set(cleanCode, data.stdin);
+  }
   ioInstance.to(`room-${cleanCode}`).emit('code-executed', payload);
   ioInstance.to(`room-${cleanCode}`).emit('code-output', payload);
 }

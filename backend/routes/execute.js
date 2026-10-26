@@ -256,7 +256,7 @@ router.get('/history/:roomId', optionalAuth, async (req, res, next) => {
     // Fetch last 10 executions
     const { data: historyRows, error: histErr } = await supabaseAdmin
       .from('code_history')
-      .select('id, room_id, user_id, user_name, code_content, language, execution_output, execution_status, error_message, execution_time_ms, created_at')
+      .select('id, room_id, user_id, user_name, code_content, language, stdin, execution_output, execution_status, error_message, execution_time_ms, created_at')
       .eq('room_id', targetRoomId)
       .order('created_at', { ascending: false })
       .limit(10);
@@ -272,6 +272,7 @@ router.get('/history/:roomId', optionalAuth, async (req, res, next) => {
       id: row.id,
       code: row.code_content,
       language: row.language,
+      stdin: row.stdin || '',
       output: row.execution_output,
       status: row.execution_status,
       errorMessage: row.error_message,

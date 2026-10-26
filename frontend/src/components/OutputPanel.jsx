@@ -52,6 +52,13 @@ export const OutputPanel = memo(function OutputPanel({
     }
   }, [output, isRunning]);
 
+  // Auto-open stdin drawer if stdin has content from collaborator
+  useEffect(() => {
+    if (stdin && stdin.trim()) {
+      setShowStdin(true);
+    }
+  }, [stdin]);
+
   // Copy output to clipboard
   const handleCopy = async () => {
     if (!output) return;

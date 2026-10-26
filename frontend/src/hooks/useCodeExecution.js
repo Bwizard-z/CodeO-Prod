@@ -167,6 +167,36 @@ export function useCodeExecution(roomCode, user = null, socket = null) {
     setHistory([]);
   }, [clearOutput, socket, roomCode]);
 
+  // Initial load of room execution history to populate output & stdin for new/reconnected peers
+  useEffect(() => {
+    let isMounted = true;
+    if (!roomCode) return;
+
+    api.getExecutionHistory(roomCode)
+      .then((res) => {
+        if (!isMounted || !res?.history || !Array.isArray(res.history) || res.history.length === 0) return;
+        const latest = res.history[0];
+        if (latest) {
+          setOutput((prev) => (prev ? prev : (latest.output || '')));
+          setError((prev) => (prev ? prev : (latest.errorMessage || null)));
+          setExecutionTime((prev) => (prev !== null ? prev : (latest.executionTimeMs || null)));
+          setExecutedBy((prev) => (prev ? prev : (latest.userName || null)));
+          setStatus((prev) => (prev !== 'idle' ? prev : (latest.status === 'error' ? 'error' : 'success')));
+          if (latest.stdin) {
+            setStdin((prev) => (prev ? prev : latest.stdin));
+          }
+        }
+        setHistory(res.history);
+      })
+      .catch((err) => {
+        console.warn('[useCodeExecution] Initial history fetch note:', err.message);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [roomCode]);
+
   // 5. Fetch Execution Languages
   const getLanguages = useCallback(async () => {
     try {
