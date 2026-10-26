@@ -112,9 +112,19 @@ function initSocket(server, allowedOrigins = []) {
       if (!roomMembers.has(cleanCode)) {
         roomMembers.set(cleanCode, new Map());
       }
-      roomMembers.get(cleanCode).set(socket.id, currentUser);
+      const membersMap = roomMembers.get(cleanCode);
 
-      const activeUsers = Array.from(roomMembers.get(cleanCode).values());
+      // Deduplicate: If an existing socket in this room belongs to the same user.id, remove that stale socket
+      if (currentUser.id && !currentUser.id.startsWith('guest-')) {
+        for (const [sId, existingMem] of membersMap.entries()) {
+          if (String(existingMem.id) === String(currentUser.id) && sId !== socket.id) {
+            membersMap.delete(sId);
+          }
+        }
+      }
+      membersMap.set(socket.id, currentUser);
+
+      const activeUsers = Array.from(membersMap.values());
       // Emit full users list to all members in the room
       io.to(`room-${cleanCode}`).emit('room-users', activeUsers);
 
@@ -615,7 +625,7 @@ function initSocket(server, allowedOrigins = []) {
     });
 
     // 10. Leave room
-    socket.on('leave-room', ({ roomCode }) => {
+    socket.on('leave-room', ({ roomCode } = {}) => {
       const code = (roomCode || currentRoomCode)?.toUpperCase()?.trim();
       if (!code) return;
 
@@ -635,32 +645,40 @@ function initSocket(server, allowedOrigins = []) {
       if (currentUser) {
         socket.to(`room-${code}`).emit('user-left', {
           user: currentUser,
+          userId: currentUser?.id,
+          socketId: socket.id,
           timestamp: new Date().toISOString(),
         });
       }
-      currentRoomCode = null;
+      if (currentRoomCode === code) {
+        currentRoomCode = null;
+      }
     });
 
-    // 7. Socket Disconnect
+    // 7. Socket Disconnect - evicts socket from all rooms to prevent ghost users
     socket.on('disconnect', () => {
-      if (currentRoomCode && roomMembers.has(currentRoomCode)) {
-        const members = roomMembers.get(currentRoomCode);
-        members.delete(socket.id);
-        const remaining = Array.from(members.values());
+      for (const [code, members] of roomMembers.entries()) {
+        if (members.has(socket.id)) {
+          const removedUser = members.get(socket.id);
+          members.delete(socket.id);
+          const remaining = Array.from(members.values());
 
-        if (remaining.length === 0) {
-          roomMembers.delete(currentRoomCode);
-        } else {
-          io.to(`room-${currentRoomCode}`).emit('room-users', remaining);
-        }
+          if (remaining.length === 0) {
+            roomMembers.delete(code);
+          } else {
+            io.to(`room-${code}`).emit('room-users', remaining);
+          }
 
-        if (currentUser) {
-          socket.to(`room-${currentRoomCode}`).emit('user-left', {
-            user: currentUser,
+          io.to(`room-${code}`).emit('user-left', {
+            user: removedUser || currentUser,
+            userId: removedUser?.id || currentUser?.id,
+            socketId: socket.id,
             timestamp: new Date().toISOString(),
           });
         }
       }
+      currentRoomCode = null;
+      currentUser = null;
     });
   });
 

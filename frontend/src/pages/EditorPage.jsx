@@ -476,20 +476,22 @@ function EditorPageInner() {
 
   // Deduplicated collaborator count for collapsed rail and UI headers
   const activeCollaboratorsCount = useMemo(() => {
-    const names = new Set();
+    const uniqueKeys = new Set();
     if (Array.isArray(yjs?.connectedUsers)) {
       yjs.connectedUsers.forEach((u) => {
-        if (u?.name) names.add(u.name.trim().toLowerCase());
+        const k = u?.isLocal ? '__self__' : (u?.id ? String(u.id) : (u?.clientID ? `client-${u.clientID}` : null));
+        if (k) uniqueKeys.add(k);
       });
     }
     if (Array.isArray(members)) {
       members.forEach((m) => {
-        const n = m?.name || m?.user_metadata?.user_name;
-        if (n) names.add(n.trim().toLowerCase());
+        const isSelf = user?.id && (String(m.id) === String(user.id) || String(m.userId) === String(user.id));
+        const k = isSelf ? '__self__' : (m?.id || m?.userId || m?.socketId);
+        if (k) uniqueKeys.add(String(k));
       });
     }
-    return Math.max(1, names.size);
-  }, [yjs?.connectedUsers, members]);
+    return Math.max(1, uniqueKeys.size);
+  }, [yjs?.connectedUsers, members, user?.id]);
 
   // Fetch Room Information from API on mount
   useEffect(() => {

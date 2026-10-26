@@ -85,19 +85,16 @@ export const Sidebar = ({
     if (Array.isArray(connectedUsers) && connectedUsers.length > 0) {
       connectedUsers.forEach((u) => {
         const rawName = u.name || 'Collaborator';
-        const normName = rawName.trim().toLowerCase();
-        const isSelf = Boolean(u.isLocal) || normName === normSelfName || String(u.id) === String(currentUserId);
-        const key = isSelf ? '__self__' : (u.id || normName);
+        const isSelf = Boolean(u.isLocal) || (currentUserId && String(u.id) === String(currentUserId));
+        const key = isSelf ? '__self__' : (u.id ? String(u.id) : (u.clientID ? `client-${u.clientID}` : `yjs-${rawName}-${Math.random()}`));
 
         const avatar =
           u.avatar ||
           (isSelf ? currentUserAvatar : null);
 
-        const userIsHost = Boolean(
-          (isHost && isSelf) ||
-          u.isHost ||
-          (hostId && String(u.id) === String(hostId))
-        );
+        const userIsHost = isSelf
+          ? Boolean(isHost)
+          : Boolean(u.isHost || (hostId && String(u.id) === String(hostId)));
 
         if (!userMap.has(key)) {
           userMap.set(key, {
@@ -118,8 +115,12 @@ export const Sidebar = ({
           if (u.voice) existing.voice = u.voice;
           if (u.color) existing.color = u.color;
           if (avatar && !existing.avatar) existing.avatar = avatar;
-          if (isSelf) existing.isLocal = true;
-          if (userIsHost) existing.isHost = true;
+          if (isSelf) {
+            existing.isLocal = true;
+            existing.isHost = Boolean(isHost);
+          } else if (userIsHost) {
+            existing.isHost = true;
+          }
         }
       });
     }
@@ -128,9 +129,11 @@ export const Sidebar = ({
     if (Array.isArray(members) && members.length > 0) {
       members.forEach((m) => {
         const rawName = m.name || m.user_metadata?.user_name || 'Collaborator';
-        const normName = rawName.trim().toLowerCase();
-        const isSelf = normName === normSelfName || String(m.id) === String(currentUserId);
-        const key = isSelf ? '__self__' : (m.id || normName);
+        const isSelf = Boolean(
+          (currentUserId && (String(m.id) === String(currentUserId) || String(m.userId) === String(currentUserId))) ||
+          (currentUser?.anonymousSessionId && (m.anonymousSessionId === currentUser.anonymousSessionId || String(m.id) === currentUser.anonymousSessionId))
+        );
+        const key = isSelf ? '__self__' : (m.id || m.userId || m.socketId || `member-${rawName}`);
 
         const avatar =
           m.avatar ||
@@ -138,15 +141,20 @@ export const Sidebar = ({
           m.user_metadata?.picture ||
           (isSelf ? currentUserAvatar : null);
 
-        const memberIsHost = Boolean(
-          m.role === 'host' ||
-          (isHost && isSelf) ||
-          (hostId && (String(m.id) === String(hostId) || String(m.userId) === String(hostId) || String(m.user_id) === String(hostId)))
-        );
+        const memberIsHost = isSelf
+          ? Boolean(isHost)
+          : Boolean(
+              m.role === 'host' ||
+              (hostId && (String(m.id) === String(hostId) || String(m.userId) === String(hostId) || String(m.user_id) === String(hostId)))
+            );
 
         if (userMap.has(key)) {
           const existing = userMap.get(key);
-          if (memberIsHost) existing.isHost = true;
+          if (isSelf) {
+            existing.isHost = Boolean(isHost);
+          } else if (memberIsHost) {
+            existing.isHost = true;
+          }
           if (avatar && !existing.avatar) existing.avatar = avatar;
           if (m.canEdit !== undefined) existing.canEdit = m.canEdit;
           if (m.isMuted !== undefined) existing.isMuted = m.isMuted;
@@ -190,8 +198,7 @@ export const Sidebar = ({
           const isMatch =
             (rcmUserId && (uId === rcmUserId || normKey === rcmUserId)) ||
             (rcmId && (uId === rcmId || normKey === rcmId)) ||
-            (rcmName && (uName === rcmName || normKey === rcmName)) ||
-            (uId && uId.startsWith('guest-') && rcmName && uId === `guest-${rcmName.replace(/[^a-z0-9]/g, '')}`);
+            (!userObj.isLocal && rcmName && (uName === rcmName || normKey === rcmName));
 
           if (isMatch) {
             if (rcm.canEdit !== undefined) {
@@ -270,17 +277,21 @@ export const Sidebar = ({
       };
     });
 
-    // Guarantee that if local user is host, their entry is marked as host
+    // Guarantee that local user's isHost strictly matches isHost prop (never inherits host status accidentally)
     userList.forEach((u) => {
-      if (u.isLocal && isHost) u.isHost = true;
+      if (u.isLocal) {
+        u.isHost = Boolean(isHost);
+      }
     });
 
-    // If still no host is marked in the room, match against room host name/id
+    // If still no host is marked in the room, match against room hostId for remote users
     const hasAnyHost = userList.some((u) => u.isHost);
     if (!hasAnyHost && userList.length > 0) {
       const matchingHost = userList.find((u) => (
-        (normHostName && (u.name.toLowerCase().includes(normHostName) || normHostName.includes(u.name.toLowerCase()))) ||
-        (hostId && (String(u.id) === String(hostId) || String(u.userId) === String(hostId)))
+        !u.isLocal && (
+          (hostId && (String(u.id) === String(hostId) || String(u.userId) === String(hostId))) ||
+          (normHostName && (u.name.toLowerCase() === normHostName))
+        )
       ));
       if (matchingHost) {
         matchingHost.isHost = true;

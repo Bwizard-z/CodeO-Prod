@@ -143,8 +143,10 @@ export function useYjs(roomCode, user = null) {
 
       states.forEach((state, clientID) => {
         if (state.user) {
-          const userKey = (state.user.id || state.user.name || '').trim().toLowerCase() || String(clientID);
           const isLocal = clientID === currentDoc.clientID;
+          const userKey = isLocal
+            ? '__self__'
+            : (state.user.id ? `uid-${String(state.user.id).trim().toLowerCase()}` : `client-${clientID}`);
 
           let safeCursor = null;
           if (state.cursor) {
