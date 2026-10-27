@@ -89,11 +89,12 @@ function getOrCreateRoom(roomCode) {
     conns,
     saveTimeout: null,
     evictionTimeout: null,
+    initPromise: null,
   };
   rooms.set(code, roomData);
 
   // Asynchronously load saved code content from Supabase
-  supabaseAdmin
+  roomData.initPromise = supabaseAdmin
     .from('rooms')
     .select('code_content, language')
     .eq('code', code)
@@ -179,7 +180,7 @@ function getOrCreateRoom(roomCode) {
 /**
  * Handle new WebSocket connection from y-websocket client synchronously
  */
-function setupYjsConnection(conn, req) {
+async function setupYjsConnection(conn, req) {
   conn.binaryType = 'arraybuffer';
 
   // Extract roomCode from URL path or query params
@@ -236,6 +237,17 @@ function setupYjsConnection(conn, req) {
       console.warn(`[Yjs Server] Error parsing WS message in ${roomCode}:`, err.message);
     }
   });
+
+  // Await initial code preloading from database before sending SyncStep 1
+  if (room.initPromise) {
+    try {
+      await room.initPromise;
+    } catch (e) {
+      console.warn(`[Yjs Server] Note awaiting initPromise for ${roomCode}:`, e.message);
+    }
+  }
+
+  if (conn.readyState !== 1) return;
 
   // Step 1: Send initial SyncStep 1 to client
   {

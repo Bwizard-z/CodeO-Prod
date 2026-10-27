@@ -523,21 +523,6 @@ function EditorPageInner() {
             if (cleanLang && cleanLang !== languageRef.current) {
               setLanguage(cleanLang);
             }
-
-            // If the document is currently empty or has default starter snippet, ensure correct room boilerplate
-            if (yjs?.yText && yjs?.doc) {
-              const currentText = yjs.yText.toString().trim();
-              const allSnippets = Object.values(STARTER_SNIPPETS).map((s) => s.trim());
-              if (currentText === '' || allSnippets.includes(currentText)) {
-                const targetSnippet = res.room.code_content || STARTER_SNIPPETS[cleanLang] || STARTER_SNIPPETS.javascript;
-                if (currentText !== targetSnippet.trim()) {
-                  yjs.doc.transact(() => {
-                    yjs.yText.delete(0, yjs.yText.length);
-                    yjs.yText.insert(0, targetSnippet);
-                  }, 'room-language-seed');
-                }
-              }
-            }
           }
         } else {
           throw new Error(res.error || 'Room not found.');
@@ -816,7 +801,11 @@ function EditorPageInner() {
     // seamlessly update the editor to the newly selected language's starter snippet
     if (yjs?.yText && yjs?.doc) {
       const currentText = yjs.yText.toString().trim();
-      const allSnippets = Object.values(STARTER_SNIPPETS).map((s) => s.trim());
+      const allSnippets = [
+        ...Object.values(STARTER_SNIPPETS).map((s) => s.trim()),
+        '// TypeScript in CodeO\nconsole.log("Hello from CodeO!");'.trim(),
+        '// TypeScript in CodeO\nconst greeting: string = "Hello from CodeO!";\nconsole.log(greeting);'.trim(),
+      ];
       if (currentText === '' || allSnippets.includes(currentText)) {
         const nextSnippet = STARTER_SNIPPETS[cleanLang] || STARTER_SNIPPETS.javascript;
         yjs.doc.transact(() => {

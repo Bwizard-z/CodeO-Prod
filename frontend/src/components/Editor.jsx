@@ -34,7 +34,7 @@ export const STARTER_SNIPPETS = {
   cpp: '// C++ in CodeO\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from CodeO!" << std::endl;\n    return 0;\n}\n',
   'c++': '// C++ in CodeO\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from CodeO!" << std::endl;\n    return 0;\n}\n',
   java: '// Java in CodeO\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from CodeO!");\n    }\n}\n',
-  typescript: '// TypeScript in CodeO\nconst greeting: string = "Hello from CodeO!";\nconsole.log(greeting);\n',
+  typescript: '// TypeScript in CodeO\nconsole.log("Hello from CodeO!");\n',
 };
 
 export function Editor({
@@ -440,10 +440,18 @@ export function Editor({
     if (onMount) onMount(editor, monaco);
   };
 
-  // Safely seed initial code when the room first syncs and if document is truly empty
+  // Safely seed initial code only if the host/creator and the document is truly empty after sync
   const hasSeededRef = useRef(false);
   useEffect(() => {
     if (!isSynced || !yText) return;
+
+    if (yText.length > 0) {
+      hasSeededRef.current = true;
+      return;
+    }
+
+    // Joining users (non-hosts) must never seed boilerplate code
+    if (!isHost) return;
 
     if (yText.length === 0 && !hasSeededRef.current) {
       hasSeededRef.current = true;
@@ -456,10 +464,8 @@ export function Editor({
           yText.insert(0, codeToLoad);
         }, 'initial-seed');
       }
-    } else if (yText.length > 0) {
-      hasSeededRef.current = true;
     }
-  }, [isSynced, yText, doc, language, initialCode]);
+  }, [isSynced, yText, doc, language, initialCode, isHost]);
 
   // Keep parent notified of text changes via debounced yText observer (never torn down by render loops)
   useEffect(() => {
